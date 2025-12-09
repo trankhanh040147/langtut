@@ -21,6 +21,7 @@
 - **TTY:** Check `isatty(stdout)`, disable colors/spinners if piping or `NO_COLOR`
 - **Concurrency:** `errgroup.Group` over `sync.WaitGroup`, propagate errors, handle context cancellation
 - **Timeouts:** Default timeout for all network/IO, never hang indefinitely
+- **Map Addresses:** Cannot take address of map index expressions directly (`&map[key]`). Assign first: `val := map[key]; return &val`
 - **Go Version:** Latest stable (1.25+), update `go.mod` on releases, `go mod tidy` after bumps
 - **Dependencies:** Latest stable, `go get -u ./...` periodically, `govulncheck` for security, pin majors
 - **Go Report Card:** Target A+. `gofmt -s`, `go vet`, `staticcheck`, `ineffassign`, `misspell`. Complexity ≤15, doc exports, error wrapping: `fmt.Errorf("ctx: %w", err)`

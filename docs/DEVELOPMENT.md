@@ -34,6 +34,7 @@
 - **TTY Detection:** Check if `stdout` is a terminal (`isatty`). Disable colors, spinners, and interactive prompts if piping or if `NO_COLOR` env is present.
 - **Concurrency:** Use `errgroup.Group` over raw `sync.WaitGroup` to propagate errors and handle context cancellation across multiple goroutines.
 - **Timeouts:** Default to a timeout for all network/IO contexts. Never allow a CLI command to hang indefinitely without user feedback.
+- **Iterators:** When using Google API iterators (`google.golang.org/api/iterator`), check `if err == iterator.Done` before treating errors as exceptions. `iterator.Done` signals normal end-of-stream, not an error condition.
 - **File Size:** Manage code files into small parts to reduce token costs. Split large files, keep functions focused, prefer smaller modules.
 
 ## Bug Fix Protocol
@@ -282,7 +283,8 @@
 
 | Bug | Status | Notes |
 |-----|--------|-------|
-| (None yet) | - | - |
+| StreamChat treats iterator.Done as error | Fixed | Fixed in `internal/api/gemini.go` - now checks `if err == iterator.Done` before treating as exception |
+| Cannot take address of map index expression | Fixed | Fixed in `internal/preset/preset.go:36` - assign to variable before taking address |
 
 ---
 > **Reminder**: Contents written in this file need to be condensed. Remove fluff, preserve meaning, maintain clarity for machine processing.
