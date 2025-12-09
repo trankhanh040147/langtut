@@ -7,31 +7,34 @@
 ### Vim-Style Navigation
 - All navigation should adapt Vim-style keybindings (`j/k`, `g/G`, `/`, etc.)
 - Modal interface where appropriate (normal mode, chat mode, search mode)
+- **IMPORTANT:** When adding new keyboard shortcuts, always update the help panel (`internal/ui/help.go`) to document them
 
 ### Concise CLI Flags
 - All flags should have short aliases for easy typing
 - Example: `--force` → `-f`, `--staged` → `-s`
+- Flags must be unique per command
+- Do not redefine flags in `init()`
 
 ### Keyboard-First UX
 - Every action should be accessible via keyboard
 - `?` shows help overlay with all keybindings
-- **IMPORTANT:** When adding new keyboard shortcuts, always update the help panel (`internal/ui/help.go`) to document them
 - Minimize mouse dependency
 
 ## Coding Styles
 
 - **Constants:** Define in `[...constants.go]`. No hardcoding.
 - **Input Reading:** Avoid `fmt.Scanln` (stops at whitespace). Use `bufio.NewReader(os.Stdin).ReadString('\n')`. Trim using `strings.TrimSpace` or `TrimSuffix`.
-- **Stdin:**  Never create multiple `bufio.NewReader(os.Stdin)` instances in the same function. Instantiate `bufio.NewReader(os.Stdin)` **once** and reuse. Multiple instances cause data loss in pipes/file reads.
-- **OS Ops:** Use `runtime.GOOS` for external commands: `xdg-open` (Linux), `open` (macOS), `explorer` (Windows). Edit: Use `$EDITOR` env var or fallback.
-- **Config:** Path: `~/.config/langtut/config.yaml`. Ensure dir exists (`os.MkdirAll`). Use YAML. set defaults if missing.
+- **Stdin:** Never create multiple `bufio.NewReader(os.Stdin)` instances in the same function. Instantiate **once** and reuse. Multiple instances cause data loss in pipes/file reads.
+- **OS Ops:** Use `runtime.GOOS` for external commands: `xdg-open` (Linux), `open` (macOS), `explorer` (Windows). Editor: Use `$EDITOR` env var or fallback.
+- **Config:** Path: `~/.config/langtut/config.yaml`. Ensure dir exists (`os.MkdirAll`). Use YAML. Set defaults if missing.
 - **Flags:** Ensure flags are unique per command. Do not redefine in `init()`. Verify existence before adding.
-- **Streams:** Strict separation: logical output $\rightarrow$ `os.Stdout`, logs/errors/debug $\rightarrow$ `os.Stderr`. Enables clean piping (`cmd > file`).
+- **Streams:** Strict separation: logical output → `os.Stdout`, logs/errors/debug → `os.Stderr`. Enables clean piping (`cmd > file`).
 - **Signal Handling:** Listen for `os.Interrupt` (`SIGINT`/`SIGTERM`). Cancel root `context` to trigger graceful shutdown/cleanup. Do not use `os.Exit` deep in library code.
 - **Cobra Usage:** Use `RunE` instead of `Run`. Return errors to `main` for centralized handling/exit codes. Validate inputs in `Args` or `PreRunE`, not logic body.
 - **TTY Detection:** Check if `stdout` is a terminal (`isatty`). Disable colors, spinners, and interactive prompts if piping or if `NO_COLOR` env is present.
 - **Concurrency:** Use `errgroup.Group` over raw `sync.WaitGroup` to propagate errors and handle context cancellation across multiple goroutines.
 - **Timeouts:** Default to a timeout for all network/IO contexts. Never allow a CLI command to hang indefinitely without user feedback.
+- **File Size:** Manage code files into small parts to reduce token costs. Split large files, keep functions focused, prefer smaller modules.
 
 ## Bug Fix Protocol
 
@@ -255,6 +258,11 @@
 
 > Raw ideas for future consideration
 
+**Vocabulary**
+- Common misunderstanding words
+- Multi-meaning words
+
+**Uncategorized**
 - Compare two languages side-by-side
 - Pronunciation practice with voice recognition
 - Cultural context explanations

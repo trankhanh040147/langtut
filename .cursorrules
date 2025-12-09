@@ -1,102 +1,35 @@
 # langtut - Language Learning CLI Tool
 
 ## Project Context
-- CLI tool for language learning with AI tutoring
-- Built with Go, Cobra framework, Bubbletea TUI
+- CLI: Go, Cobra, Bubbletea TUI, Vim navigation
 - Config: `~/.config/langtut/config.yaml`
-- Interactive TUI with Vim-style navigation
 
 ## Design Principles
-
-### Vim-Style Navigation
-- All navigation uses Vim keybindings (`j/k`, `g/G`, `/`, etc.)
-- Modal interfaces: normal mode, chat mode, search mode
-- Update help panel (`internal/ui/help.go`) when adding keyboard shortcuts
-
-### Concise CLI Flags
-- All flags must have short aliases (`--force` → `-f`)
-- Flags unique per command, verify before adding
-- Don't redefine flags in `init()`
-
-### Keyboard-First UX
-- Every action accessible via keyboard
-- `?` shows help overlay with all keybindings
-- Minimize mouse dependency
+- **Vim Navigation:** `j/k`, `g/G`, `/` - Update `internal/ui/help.go` when adding shortcuts
+- **CLI Flags:** All flags have short aliases (`-f`), unique per command, no redefinition in `init()`
+- **Keyboard-First:** All actions via keyboard, `?` shows help
 
 ## Coding Standards
-
-### Constants
-- Define in `[...constants.go]` files
-- No hardcoding values
-
-### Input Reading
-- Avoid `fmt.Scanln` (stops at whitespace)
-- Use `bufio.NewReader(os.Stdin).ReadString('\n')`
-- Trim with `strings.TrimSpace` or `TrimSuffix`
-- **Critical:** Never create multiple `bufio.NewReader(os.Stdin)` instances in same function. Instantiate once and reuse. Multiple instances cause data loss in pipes/file reads.
-
-### OS Operations
-- Use `runtime.GOOS` for platform-specific commands
-- External commands: `xdg-open` (Linux), `open` (macOS), `explorer` (Windows)
-- Editor: Use `$EDITOR` env var or fallback
-
-### Configuration
-- Path: `~/.config/langtut/config.yaml`
-- Ensure dir exists with `os.MkdirAll`
-- Use YAML format
-- Set defaults if missing
-
-### Streams
-- Logical output → `os.Stdout`
-- Logs/errors/debug → `os.Stderr`
-- Enables clean piping (`cmd > file`)
-
-### Signal Handling
-- Listen for `os.Interrupt` (`SIGINT`/`SIGTERM`)
-- Cancel root `context` for graceful shutdown/cleanup
-- Don't use `os.Exit` deep in library code
-
-### Cobra Usage
-- Use `RunE` instead of `Run`
-- Return errors to `main` for centralized handling/exit codes
-- Validate inputs in `Args` or `PreRunE`, not logic body
-
-### TTY Detection
-- Check if `stdout` is terminal (`isatty`)
-- Disable colors, spinners, interactive prompts if piping or `NO_COLOR` env present
-
-### Concurrency
-- Use `errgroup.Group` over raw `sync.WaitGroup`
-- Propagate errors and handle context cancellation across goroutines
-
-### Timeouts
-- Default timeout for all network/IO contexts
-- Never allow CLI command to hang indefinitely without user feedback
-
-### Go Version
-- Latest stable (1.23+), update `go.mod` on releases
-- `go mod tidy` after bumps
-
-### Dependencies
-- Latest stable versions, `go get -u ./...` periodically
-- `govulncheck` for security, pin major versions
-
-### Go Report Card
-Target: A+ on goreportcard.com
-- `gofmt -s`, `go vet`, `staticcheck`, `ineffassign`, `misspell`
-- Cyclomatic complexity ≤15, doc comments on exports
-- Error wrapping: `fmt.Errorf("context: %w", err)`
+- **Constants:** `[...constants.go]` files, no hardcoding
+- **Input:** `bufio.NewReader(os.Stdin).ReadString('\n')`, trim with `strings.TrimSpace/TrimSuffix`. Never create multiple readers in same function (causes pipe data loss)
+- **OS:** `runtime.GOOS` for platform commands (`xdg-open`/`open`/`explorer`), `$EDITOR` for editor
+- **Config:** `~/.config/langtut/config.yaml`, ensure dir with `os.MkdirAll`, YAML, set defaults
+- **Flags:** Unique per command, verify before adding, no `init()` redefinition
+- **Streams:** Output → `os.Stdout`, logs/errors → `os.Stderr` (enables piping)
+- **Signals:** Listen `os.Interrupt`, cancel root `context` for cleanup, no `os.Exit` in library code
+- **Cobra:** Use `RunE`, return errors to `main`, validate in `Args`/`PreRunE`
+- **TTY:** Check `isatty(stdout)`, disable colors/spinners if piping or `NO_COLOR`
+- **Concurrency:** `errgroup.Group` over `sync.WaitGroup`, propagate errors, handle context cancellation
+- **Timeouts:** Default timeout for all network/IO, never hang indefinitely
+- **Go Version:** Latest stable (1.25+), update `go.mod` on releases, `go mod tidy` after bumps
+- **Dependencies:** Latest stable, `go get -u ./...` periodically, `govulncheck` for security, pin majors
+- **Go Report Card:** Target A+. `gofmt -s`, `go vet`, `staticcheck`, `ineffassign`, `misspell`. Complexity ≤15, doc exports, error wrapping: `fmt.Errorf("ctx: %w", err)`
+- **File Size:** Manage code files into small parts to reduce token costs. Split large files, keep functions focused, prefer smaller modules
 
 ## Bug Fix Protocol
-
-1. **Global Fix:** Search codebase (`rg`/`fd`) for similar patterns. Fix **all** occurrences, not just reported one.
-2. **Documentation:**
-   - Update "Known Bugs" table in `docs/DEVELOPMENT.md` (Status: Fixed)
-   - Update "Coding Styles" if bug reflects common anti-pattern
-3. **Testing:** Verify edge cases: Interactive, Piped (`|`), Redirected (`<`), Non-interactive modes
+1. **Global Fix:** Search (`rg`/`fd`) for similar patterns, fix **all** occurrences
+2. **Documentation:** Update "Known Bugs" in `docs/DEVELOPMENT.md`, update "Coding Styles" if anti-pattern
+3. **Testing:** Verify Interactive, Piped (`|`), Redirected (`<`), Non-interactive modes
 
 ## Code Style
-- Concise, bullet points over paragraphs
-- Remove fluff, preserve meaning
-- Clear, actionable code
-
+- Concise bullets over paragraphs, remove fluff, preserve meaning, clear actionable code
