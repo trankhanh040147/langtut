@@ -60,9 +60,9 @@
 
 ---
 
-# v0.1 - MVP Release
+# v0.1 - Vocabulary Module
 
-**Status:** Planned
+**Status:** In Progress
 
 **Features:**
 
@@ -75,27 +75,43 @@
 - [ ] Topic-based learning
 - [ ] Daily random vocab
 
+### Foundation
+- [x] Cobra CLI framework
+- [x] Interactive TUI with Bubbletea
+- [x] AI API client (Gemini) with streaming
+- [x] Config: `~/.config/langtut/config.yaml`
+- [x] Preset system for custom prompts
+
+---
+
+# v0.2 - Reading Module
+
+**Status:** Planned
+
+**Features:**
+
 ### Reading Module
 - [ ] Read blog/article with AI assistance
 - [ ] Watch video with AI (URL input)
 - [ ] Interactive annotation (hover for definitions, pronunciation, examples)
 - [ ] Add words to library from content
 
+---
+
+# v0.3 - Writing Module
+
+**Status:** Planned
+
+**Features:**
+
 ### Writing Module
 - [ ] Fill-in phrases: Incomplete phrase → user fills words
 - [ ] Rewrite sentences: Fragments → user creates complete sentence
 - [ ] Interactive conversations: AI helps fix mistakes, improve writing
 
-### Foundation
-- [ ] Cobra CLI framework
-- [ ] Interactive TUI with Bubbletea
-- [ ] AI API client (Gemini) with streaming
-- [ ] Config: `~/.config/langtut/config.yaml`
-- [ ] Preset system for custom prompts
-
 ---
 
-# v0.2 - Spaced Repetition & Grammar
+# v0.4 - Spaced Repetition & Grammar
 
 **Status:** Planned
 
@@ -123,7 +139,7 @@
 
 ---
 
-# v0.3 - Conversation & Gamification
+# v0.5 - Conversation & Gamification
 
 **Status:** Planned
 
@@ -154,7 +170,7 @@
 
 ---
 
-# v0.4 - Learning Paths & Content Integration
+# v0.6 - Learning Paths & Content Integration
 
 **Status:** Planned
 
@@ -178,7 +194,7 @@
 
 ---
 
-# v0.5 - Personalization & Analytics
+# v0.7 - Personalization & Analytics
 
 **Status:** Planned
 
