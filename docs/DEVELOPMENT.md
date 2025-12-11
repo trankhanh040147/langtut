@@ -20,6 +20,11 @@
 - `?` shows help overlay with all keybindings
 - Minimize mouse dependency
 
+### Interactive-First UX
+- Prefer TUI interactions over command-line flags. Minimize typing effort.
+- Use modals, forms, and keyboard shortcuts instead of long command strings.
+- AI-Assisted Workflows: Auto-generate content (meanings, examples) when possible, allow user refinement.
+
 ## Coding Styles
 
 - **Constants:** Define in `[...constants.go]`. No hardcoding.
@@ -67,9 +72,12 @@
 **Features:**
 
 ### Vocabulary Module
+- [x] Word library: Interactive TUI for CRUD operations
+  - `langtut vocab add <word>` - AI generates meaning/examples, user edits in modal
+  - `langtut vocab` or `langtut vocab list` - Split-pane TUI (word list + details)
+  - Keyboard shortcuts: `e` edit, `d` delete, `a` add, `/` search
 - [ ] Vocab guessing/typing: Show word → user types meaning → AI reviews
 - [ ] Phrase-based learning: Show phrases → prompt user for strange words → explain meaning
-- [ ] Word library: Add words, CRUD operations
 - [ ] Export/sync library
 - [ ] TTS for word pronunciation
 - [ ] Topic-based learning

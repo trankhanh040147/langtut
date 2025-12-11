@@ -91,11 +91,6 @@ func PromptAPIKey(cfg *Config) error {
 		return fmt.Errorf("api_key not set and not in interactive mode")
 	}
 
-	// Check NO_COLOR env
-	if os.Getenv("NO_COLOR") != "" {
-		return fmt.Errorf("api_key not set")
-	}
-
 	fmt.Fprintf(os.Stderr, "Gemini API key not found. Please enter your API key: ")
 	reader := bufio.NewReader(os.Stdin)
 	apiKey, err := reader.ReadString('\n')

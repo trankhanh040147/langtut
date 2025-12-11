@@ -33,17 +33,25 @@ var defaultPresets = map[string]Preset{
 // GetPreset returns a preset by name
 func GetPreset(name string) (*Preset, error) {
 	if name == "" {
-		preset := defaultPresets["intermediate"]
-		return &preset, nil
+		p := defaultPresets["intermediate"]
+		return &Preset{
+			Name:        p.Name,
+			Description: p.Description,
+			Template:    p.Template,
+		}, nil
 	}
 
 	key := strings.ToLower(strings.TrimSpace(name))
-	preset, ok := defaultPresets[key]
+	p, ok := defaultPresets[key]
 	if !ok {
 		return nil, fmt.Errorf("preset '%s' not found", name)
 	}
 
-	return &preset, nil
+	return &Preset{
+		Name:        p.Name,
+		Description: p.Description,
+		Template:    p.Template,
+	}, nil
 }
 
 // ListPresets returns all available presets

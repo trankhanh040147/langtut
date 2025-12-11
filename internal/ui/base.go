@@ -83,3 +83,9 @@ func (m *BaseModel) Height() int {
 func (m *BaseModel) Width() int {
 	return m.width
 }
+
+// SetSize sets the terminal size
+func (m *BaseModel) SetSize(width, height int) {
+	m.width = width
+	m.height = height
+}

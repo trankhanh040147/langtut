@@ -1,3 +1,7 @@
+---
+alwaysApply: true
+---
+
 # langtut - Language Learning CLI Tool
 
 ## Project Context
@@ -8,6 +12,8 @@
 - **Vim Navigation:** `j/k`, `g/G`, `/` - Update `internal/ui/help.go` when adding shortcuts
 - **CLI Flags:** All flags have short aliases (`-f`), unique per command, no redefinition in `init()`
 - **Keyboard-First:** All actions via keyboard, `?` shows help
+- **Interactive Features:** Prefer TUI over long command flags. Use modals, forms, and keyboard shortcuts. Minimize typing effort.
+- **User Effort:** Minimize typing. Use AI generation, defaults, and interactive editing instead of manual command entry.
 
 ## Coding Standards
 - **Constants:** `[...constants.go]` files, no hardcoding
