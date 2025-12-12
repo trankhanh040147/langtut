@@ -1,6 +1,6 @@
 # Go parameters
 BINARY_NAME=langtut
-MAIN_PACKAGE=./cmd/langtut
+MAIN_PACKAGE=./cmd
 GO=go
 
 # Build info
@@ -38,7 +38,7 @@ review-staged:
 
 ## install: Install to $GOPATH/bin
 install:
-	$(GO) install $(LDFLAGS) $(MAIN_PACKAGE)
+	$(GO) build $(LDFLAGS) -o $(shell go env GOPATH)/bin/$(BINARY_NAME) $(MAIN_PACKAGE)
 
 ## uninstall: Remove from $GOPATH/bin
 uninstall:
