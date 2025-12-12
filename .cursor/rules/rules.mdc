@@ -36,6 +36,7 @@ alwaysApply: true
 - **Multi-item Processing:** Reload shared state (e.g., library) at start of each iteration to ensure fresh state for each item.
 - **Layout:** Center elements via style width; **never** calculate width from string length.
 - **Help Text:** Centralize keybinding docs in `constants` (e.g., `HelpText`), never hardcode inline.
+- **Width Safety:** Guard `strings.Repeat` with `max(0, count)`. Guard width calculations to prevent negative values. Default to minimum width (80) if `Width() == 0` before first `WindowSizeMsg`.
     
 ### 4. Quality & Maintenance
 - **Standards:** Target A+ Report Card. Complexity ≤15. Run `gofmt -s`, `vet`, `staticcheck`, `misspell`.

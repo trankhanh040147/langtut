@@ -283,6 +283,10 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 | #bug01: Cannot save words after Enter until last step | Fixed | Fixed in `internal/ui/vocab/add_model.go:195-210` - Enter now saves immediately if word is valid and not editing |
 | #bug02: Cannot use Tab to navigate fields | Fixed | Fixed in `internal/ui/vocab/add_model.go:218-225` - Tab now navigates between fields when not editing |
 | #bug03: Multi-word add modal only shows last word | Fixed | Fixed in `internal/cli/vocab.go:114-143` - Library reloaded at start of each iteration, ensuring fresh state for each modal |
+| #bug04: Modal doesn't close after save, no success message | Fixed | Fixed in `internal/ui/vocab/add_model.go:410-413` - Success message "✓ Saved!" shown, modal closes on next Update cycle |
+| #bug05: Panic "strings: negative Repeat count" when terminal width uninitialized | Fixed | Fixed in `internal/ui/vocab/list_model.go` and `add_model.go` - All `strings.Repeat` calls guarded, width calculations prevent negative values, default width 80 if uninitialized |
+| #bug06: Cannot edit field by Enter, only by pressing `e` | Fixed | Fixed in `internal/ui/vocab/add_model.go:195-210` - Removed immediate save logic, Enter now always enters edit mode. Added Ctrl+S as dedicated save key |
+| #bug07: Modal doesn't auto-close after save in multi-word add | Fixed | Fixed in `internal/ui/vocab/add_model.go:316` - `saveWord()` now returns `tea.Quit` to auto-close modal. `list_model.go` updated to handle `tea.Quit` from embedded modal |
 
 ---
 > **Reminder**: Contents written in this file need to be condensed. Remove fluff, preserve meaning, maintain clarity for machine processing.

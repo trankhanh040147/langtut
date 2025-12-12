@@ -193,21 +193,20 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case constants.KeyEnter:
-			// Start editing current field or save
+			// Start editing current field or save current field and advance
 			if m.currentField == 5 {
 				// Save button (always at index 5: Word(0), Meaning(1), Examples(2-4), Save(5))
 				return m.saveWord()
 			} else {
-				// If word is valid and not currently editing, allow saving from any field
-				// This allows immediate save without navigating to Save button
-				if m.word != "" && m.editingField < 0 {
-					return m.saveWord()
-				}
-				// Otherwise, enter edit mode for current field
+				// Enter edit mode for current field
 				m.editingField = m.currentField
 				m.loadCurrentFieldToBuffer()
 			}
 			return m, nil
+
+		case constants.KeyCtrlS:
+			// Dedicated save key - save word immediately from any field
+			return m.saveWord()
 
 		case "e":
 			// Quick edit current field
@@ -314,7 +313,7 @@ func (m *addModel) saveWord() (tea.Model, tea.Cmd) {
 
 	m.done = true
 	m.saved = true
-	return m, nil
+	return m, tea.Quit
 }
 
 func (m *addModel) View() string {
@@ -339,7 +338,11 @@ func (m *addModel) View() string {
 	}
 	titleStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("205"))
 	lines = append(lines, titleStyle.Render(title))
-	lines = append(lines, strings.Repeat("─", width-4))
+	repeatCount := width - 4
+	if repeatCount < 0 {
+		repeatCount = 0
+	}
+	lines = append(lines, strings.Repeat("─", repeatCount))
 
 	if m.isGenerating {
 		lines = append(lines, "")
@@ -409,6 +412,12 @@ func (m *addModel) View() string {
 		lines = append(lines, saveLabel)
 	}
 
+	if m.saved {
+		lines = append(lines, "")
+		successStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true)
+		lines = append(lines, successStyle.Render("✓ Saved!"))
+	}
+
 	if m.err != nil {
 		lines = append(lines, "")
 		errorStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
@@ -416,7 +425,7 @@ func (m *addModel) View() string {
 	}
 
 	lines = append(lines, "")
-	helpText := "Enter: Edit field / Save | Esc: Cancel | Tab: Next field | j/k: Navigate"
+	helpText := "Enter: Edit field | Ctrl+S: Save | Esc: Cancel | Tab: Next field | j/k: Navigate"
 	lines = append(lines, lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Render(helpText))
 
 	box := boxStyle.Render(strings.Join(lines, "\n"))
@@ -431,9 +440,17 @@ func (m *addModel) View() string {
 		leftPadding = 0
 	}
 
-	result := strings.Repeat("\n", topPadding)
+	topRepeat := topPadding
+	if topRepeat < 0 {
+		topRepeat = 0
+	}
+	leftRepeat := leftPadding
+	if leftRepeat < 0 {
+		leftRepeat = 0
+	}
+	result := strings.Repeat("\n", topRepeat)
 	for _, line := range strings.Split(box, "\n") {
-		result += strings.Repeat(" ", leftPadding) + line + "\n"
+		result += strings.Repeat(" ", leftRepeat) + line + "\n"
 	}
 
 	return result

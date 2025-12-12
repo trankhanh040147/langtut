@@ -14,18 +14,18 @@ import (
 
 type listModel struct {
 	ui.BaseModel
-	library      *vocab.Library
-	words        []*vocab.Word
-	filteredWords []*vocab.Word
-	selectedIdx  int
-	searchQuery  string
-	isSearching  bool
-	showAddModal bool
-	showEditModal bool
+	library           *vocab.Library
+	words             []*vocab.Word
+	filteredWords     []*vocab.Word
+	selectedIdx       int
+	searchQuery       string
+	isSearching       bool
+	showAddModal      bool
+	showEditModal     bool
 	showDeleteConfirm bool
-	editWord     *vocab.Word
-	addModel     *addModel
-	err          error
+	editWord          *vocab.Word
+	addModel          *addModel
+	err               error
 }
 
 type wordGeneratedMsg struct {
@@ -51,11 +51,11 @@ func NewListModel(lib *vocab.Library) *listModel {
 	})
 
 	return &listModel{
-		BaseModel:    ui.BaseModel{},
-		library:      lib,
-		words:        words,
+		BaseModel:     ui.BaseModel{},
+		library:       lib,
+		words:         words,
 		filteredWords: words,
-		selectedIdx:  0,
+		selectedIdx:   0,
 	}
 }
 
@@ -89,7 +89,8 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.showAddModal = false
 			m.addModel = nil
-			return m, cmd
+			// Don't propagate tea.Quit from addModel - just close the modal
+			return m, nil
 		}
 		return m, cmd
 	}
@@ -127,7 +128,8 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.showEditModal = false
 			m.addModel = nil
 			m.editWord = nil
-			return m, cmd
+			// Don't propagate tea.Quit from addModel - just close the modal
+			return m, nil
 		}
 		return m, cmd
 	}
@@ -289,6 +291,14 @@ func (m *listModel) applySearch() {
 	}
 }
 
+func (m *listModel) safeWidth() int {
+	w := m.Width()
+	if w <= 0 {
+		return 80 // Default minimum width
+	}
+	return w
+}
+
 func (m *listModel) View() string {
 	if m.showAddModal && m.addModel != nil {
 		return m.addModel.View()
@@ -307,8 +317,15 @@ func (m *listModel) View() string {
 	}
 
 	// Split pane layout
-	leftWidth := m.Width() * 40 / 100
-	rightWidth := m.Width() - leftWidth - 1
+	width := m.safeWidth()
+	leftWidth := width * 40 / 100
+	if leftWidth < 1 {
+		leftWidth = 1
+	}
+	rightWidth := width - leftWidth - 1
+	if rightWidth < 1 {
+		rightWidth = 1
+	}
 
 	leftPane := m.renderWordList(leftWidth, m.Height())
 	rightPane := m.renderWordDetails(rightWidth, m.Height())
@@ -341,7 +358,11 @@ func (m *listModel) renderWordList(width, height int) string {
 		header += fmt.Sprintf(" (%d)", len(m.filteredWords))
 	}
 	lines = append(lines, header)
-	lines = append(lines, strings.Repeat("─", width))
+	repeatCount := width
+	if repeatCount < 0 {
+		repeatCount = 0
+	}
+	lines = append(lines, strings.Repeat("─", repeatCount))
 
 	// Word list
 	listHeight := height - 3
@@ -361,7 +382,7 @@ func (m *listModel) renderWordList(width, height int) string {
 			if strings.Contains(wordLower, query) {
 				idx := strings.Index(wordLower, query)
 				before := wordText[:idx]
-				match := wordText[idx:idx+len(m.searchQuery)]
+				match := wordText[idx : idx+len(m.searchQuery)]
 				after := wordText[idx+len(m.searchQuery):]
 				highlightStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
 				wordText = before + highlightStyle.Render(match) + after
@@ -404,7 +425,11 @@ func (m *listModel) renderWordDetails(width, height int) string {
 		Foreground(lipgloss.Color("205")).
 		Padding(0, 1)
 	lines = append(lines, wordStyle.Render(word.Word))
-	lines = append(lines, strings.Repeat("─", width))
+	repeatCount := width
+	if repeatCount < 0 {
+		repeatCount = 0
+	}
+	lines = append(lines, strings.Repeat("─", repeatCount))
 
 	// Meaning
 	lines = append(lines, "")
@@ -474,11 +499,18 @@ func (m *listModel) renderDeleteConfirm() string {
 		leftPadding = 0
 	}
 
-	result := strings.Repeat("\n", topPadding)
+	topRepeat := topPadding
+	if topRepeat < 0 {
+		topRepeat = 0
+	}
+	leftRepeat := leftPadding
+	if leftRepeat < 0 {
+		leftRepeat = 0
+	}
+	result := strings.Repeat("\n", topRepeat)
 	for _, line := range strings.Split(box, "\n") {
-		result += strings.Repeat(" ", leftPadding) + line + "\n"
+		result += strings.Repeat(" ", leftRepeat) + line + "\n"
 	}
 
 	return result
 }
-

@@ -12,6 +12,7 @@ const (
 	KeyEnter  = "enter"
 	KeyEsc    = "esc"
 	KeyCtrlC  = "ctrl+c"
+	KeyCtrlS  = "ctrl+s"
 	// Vocab-specific keys
 	KeyEdit   = "e"
 	KeyDelete = "d"
@@ -37,7 +38,8 @@ Vocab List:
   Enter      View full details
 
 Add/Edit Word Modal:
-  Enter      Edit field / Save word
+  Enter      Edit field / Save field and next
+  Ctrl+S     Save word immediately
   Tab        Save field and move to next
   Esc        Cancel editing / Close modal
   j/k        Navigate between fields

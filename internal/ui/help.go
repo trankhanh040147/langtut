@@ -68,10 +68,18 @@ func RenderHelp(width, height int) string {
 		leftPadding = 0
 	}
 
-	// Add vertical padding
-	result := strings.Repeat("\n", topPadding)
+	// Add vertical padding (guard repeat counts)
+	topRepeat := topPadding
+	if topRepeat < 0 {
+		topRepeat = 0
+	}
+	leftRepeat := leftPadding
+	if leftRepeat < 0 {
+		leftRepeat = 0
+	}
+	result := strings.Repeat("\n", topRepeat)
 	for _, line := range renderedLines {
-		result += fmt.Sprintf("%s%s\n", strings.Repeat(" ", leftPadding), line)
+		result += fmt.Sprintf("%s%s\n", strings.Repeat(" ", leftRepeat), line)
 	}
 
 	return result
