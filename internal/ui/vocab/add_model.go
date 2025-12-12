@@ -50,7 +50,7 @@ func NewAddModel(word, meaning string, examples []string, lib *vocab.Library) *a
 		editingField:  -1,
 		library:      lib,
 		language:     "English", // Default, can be from config
-		isEditMode:   word != "",
+		isEditMode:   false, // Only set to true when editing existing word (originalWord != nil)
 		originalWord: nil,
 	}
 }
@@ -126,10 +126,16 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Editing a field
 			switch msg.String() {
 			case constants.KeyEnter:
-				// Save current field
+				// Save current field and advance to next
 				m.saveCurrentField()
 				m.editingField = -1
 				m.editBuffer = ""
+				// Advance to next field
+				m.currentField++
+				maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
+				if m.currentField > maxField {
+					m.currentField = 0
+				}
 			case constants.KeyEsc:
 				// Cancel editing
 				m.editingField = -1
@@ -144,7 +150,8 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editingField = -1
 				m.editBuffer = ""
 				m.currentField++
-				if m.currentField > 2+len(m.examples) {
+				maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
+				if m.currentField > maxField {
 					m.currentField = 0
 				}
 			default:
@@ -172,7 +179,7 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case constants.KeyDown:
 			m.currentField++
-			maxField := 2 + len(m.examples)
+			maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
 			if m.currentField > maxField {
 				m.currentField = 0
 			}
@@ -181,16 +188,22 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case constants.KeyUp:
 			m.currentField--
 			if m.currentField < 0 {
-				m.currentField = 2 + len(m.examples)
+				m.currentField = 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
 			}
 			return m, nil
 
 		case constants.KeyEnter:
 			// Start editing current field or save
-			if m.currentField == 2+len(m.examples)+1 {
-				// Save button
+			if m.currentField == 5 {
+				// Save button (always at index 5: Word(0), Meaning(1), Examples(2-4), Save(5))
 				return m.saveWord()
 			} else {
+				// If word is valid and not currently editing, allow saving from any field
+				// This allows immediate save without navigating to Save button
+				if m.word != "" && m.editingField < 0 {
+					return m.saveWord()
+				}
+				// Otherwise, enter edit mode for current field
 				m.editingField = m.currentField
 				m.loadCurrentFieldToBuffer()
 			}
@@ -200,6 +213,15 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			// Quick edit current field
 			m.editingField = m.currentField
 			m.loadCurrentFieldToBuffer()
+			return m, nil
+
+		case "tab":
+			// Navigate to next field when not editing
+			m.currentField++
+			maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
+			if m.currentField > maxField {
+				m.currentField = 0
+			}
 			return m, nil
 		}
 	}
@@ -380,7 +402,8 @@ func (m *addModel) View() string {
 		// Save button
 		lines = append(lines, "")
 		saveLabel := "[Save]"
-		if m.currentField == 2+len(m.examples)+1 {
+		if m.currentField == 5 {
+			// Save button always at index 5: Word(0), Meaning(1), Examples(2-4), Save(5)
 			saveLabel = "▶ [Save]"
 		}
 		lines = append(lines, saveLabel)

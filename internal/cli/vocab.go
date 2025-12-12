@@ -112,6 +112,12 @@ func runVocabAdd(words []string) error {
 
 	// Process each word
 	for i, word := range words {
+		// Reload library at start of each iteration to ensure fresh state
+		lib, err = vocab.Load()
+		if err != nil {
+			return fmt.Errorf("failed to reload library: %w", err)
+		}
+
 		// Check if word already exists
 		if _, exists := lib.GetWord(word); exists {
 			fmt.Fprintf(os.Stderr, "Word '%s' already exists, skipping...\n", word)
@@ -119,11 +125,13 @@ func runVocabAdd(words []string) error {
 		}
 
 		// Create add model with word set (will auto-generate in Init)
+		// Each word gets a fresh model instance with current library state
 		addModel := vocabui.NewAddModel(word, "", []string{}, lib)
 		addModel.SetAPIClient(apiClient)
 		addModel.SetLanguage(language)
 
 		// Show edit modal (Init will trigger auto-generation)
+		// p.Run() blocks until modal is closed, ensuring sequential display
 		p := tea.NewProgram(addModel, tea.WithAltScreen())
 		if _, err := p.Run(); err != nil {
 			fmt.Fprintf(os.Stderr, "Error in TUI for '%s': %v\n", word, err)
@@ -131,11 +139,6 @@ func runVocabAdd(words []string) error {
 		}
 
 		if addModel.Saved() {
-			// Reload library to get latest state for next iteration
-			lib, err = vocab.Load()
-			if err != nil {
-				return fmt.Errorf("failed to reload library: %w", err)
-			}
 			fmt.Fprintf(os.Stderr, "Added '%s' (%d/%d)\n", word, i+1, len(words))
 		} else {
 			fmt.Fprintf(os.Stderr, "Cancelled adding '%s'\n", word)

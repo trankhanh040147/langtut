@@ -53,15 +53,10 @@ func RenderHelp(width, height int) string {
 	helpText = strings.Join(wrapped, "\n")
 	rendered := helpStyle.Render(helpText)
 
-	// Center the help box
+	// Center the help box using style width (60) instead of calculated width
 	renderedLines := strings.Split(rendered, "\n")
 	boxHeight := len(renderedLines)
-	boxWidth := 0
-	for _, line := range renderedLines {
-		if len(line) > boxWidth {
-			boxWidth = len(line)
-		}
-	}
+	boxWidth := 60 // Use style width directly for consistent centering
 
 	// Calculate padding
 	topPadding := (height - boxHeight) / 2

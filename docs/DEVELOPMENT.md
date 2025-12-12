@@ -1,54 +1,25 @@
 # Development Roadmap
 
-## Design Principles
+## Design Principles & Coding Standards
 
-> These principles guide all feature development and UX decisions.
+> **Reference:** All design principles, coding standards, and implementation guidelines are defined in [`.cursor/rules/rules.mdc`](../.cursor/rules/rules.mdc).
 
-### Vim-Style Navigation
-- All navigation should adapt Vim-style keybindings (`j/k`, `g/G`, `/`, etc.)
-- Modal interface where appropriate (normal mode, chat mode, search mode)
-- **IMPORTANT:** When adding new keyboard shortcuts, always update the help panel (`internal/ui/help.go`) to document them
+### How To Apply These Rules
 
-### Concise CLI Flags
-- All flags should have short aliases for easy typing
-- Example: `--force` → `-f`, `--staged` → `-s`
-- Flags must be unique per command
-- Do not redefine flags in `init()`
+Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` file includes `alwaysApply: true` in its frontmatter, which ensures:
 
-### Keyboard-First UX
-- Every action should be accessible via keyboard
-- `?` shows help overlay with all keybindings
-- Minimize mouse dependency
-
-### Interactive-First UX
-- Prefer TUI interactions over command-line flags. Minimize typing effort.
-- Use modals, forms, and keyboard shortcuts instead of long command strings.
-- AI-Assisted Workflows: Auto-generate content (meanings, examples) when possible, allow user refinement.
-
-## Coding Styles
-
-- **Constants:** Define in `[...constants.go]`. No hardcoding.
-- **Input Reading:** Avoid `fmt.Scanln` (stops at whitespace). Use `bufio.NewReader(os.Stdin).ReadString('\n')`. Trim using `strings.TrimSpace` or `TrimSuffix`.
-- **Stdin:** Never create multiple `bufio.NewReader(os.Stdin)` instances in the same function. Instantiate **once** and reuse. Multiple instances cause data loss in pipes/file reads.
-- **OS Ops:** Use `runtime.GOOS` for external commands: `xdg-open` (Linux), `open` (macOS), `explorer` (Windows). Editor: Use `$EDITOR` env var or fallback.
-- **Config:** Path: `~/.config/langtut/config.yaml`. Ensure dir exists (`os.MkdirAll`). Use YAML. Set defaults if missing.
-- **Flags:** Ensure flags are unique per command. Do not redefine in `init()`. Verify existence before adding.
-- **Streams:** Strict separation: logical output → `os.Stdout`, logs/errors/debug → `os.Stderr`. Enables clean piping (`cmd > file`).
-- **Signal Handling:** Listen for `os.Interrupt` (`SIGINT`/`SIGTERM`). Cancel root `context` to trigger graceful shutdown/cleanup. Do not use `os.Exit` deep in library code.
-- **Cobra Usage:** Use `RunE` instead of `Run`. Return errors to `main` for centralized handling/exit codes. Validate inputs in `Args` or `PreRunE`, not logic body.
-- **TTY Detection:** Check if `stdout` is a terminal (`isatty`). Disable colors, spinners, and interactive prompts if piping or if `NO_COLOR` env is present.
-- **Concurrency:** Use `errgroup.Group` over raw `sync.WaitGroup` to propagate errors and handle context cancellation across multiple goroutines.
-- **Timeouts:** Default to a timeout for all network/IO contexts. Never allow a CLI command to hang indefinitely without user feedback.
-- **Iterators:** When using Google API iterators (`google.golang.org/api/iterator`), check `if err == iterator.Done` before treating errors as exceptions. `iterator.Done` signals normal end-of-stream, not an error condition.
-- **File Size:** Manage code files into small parts to reduce token costs. Split large files, keep functions focused, prefer smaller modules.
+- **Automatic Application:** Rules are always active during coding sessions
+- **Context Awareness:** Understands project-specific patterns (Vim navigation, TUI-first UX, Go conventions)
+- **Consistency:** All code suggestions follow the defined principles without manual reminders
 
 ## Bug Fix Protocol
 
 1. **Global Fix:** Search codebase (`rg`/`fd`) for similar patterns/implementations. Fix **all** occurrences, not just the reported one.
 2. **Documentation:**
     - Update "Known Bugs" table (Status: Fixed).
-    - Update "Coding Styles" if the bug reflects a common anti-pattern.
+    - Update coding standards in `.cursor/rules/rules.mdc` if the bug reflects a common anti-pattern.
 3. **Testing:** Verify edge cases: Interactive, Piped (`|`), Redirected (`<`), and Non-interactive modes.
+> **Reference:** Bug Fix Protocol are defined in [`.cursor/rules/rules.mdc`](../.cursor/rules/rules.mdc).
 
 ## Philosophy
 
@@ -309,6 +280,9 @@
 |-----|--------|-------|
 | StreamChat treats iterator.Done as error | Fixed | Fixed in `internal/api/gemini.go` - now checks `if err == iterator.Done` before treating as exception |
 | Cannot take address of map index expression | Fixed | Fixed in `internal/preset/preset.go:36` - assign to variable before taking address |
+| #bug01: Cannot save words after Enter until last step | Fixed | Fixed in `internal/ui/vocab/add_model.go:195-210` - Enter now saves immediately if word is valid and not editing |
+| #bug02: Cannot use Tab to navigate fields | Fixed | Fixed in `internal/ui/vocab/add_model.go:218-225` - Tab now navigates between fields when not editing |
+| #bug03: Multi-word add modal only shows last word | Fixed | Fixed in `internal/cli/vocab.go:114-143` - Library reloaded at start of each iteration, ensuring fresh state for each modal |
 
 ---
 > **Reminder**: Contents written in this file need to be condensed. Remove fluff, preserve meaning, maintain clarity for machine processing.

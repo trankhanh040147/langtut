@@ -35,4 +35,10 @@ Vocab List:
   d          Delete selected word
   a          Add new word
   Enter      View full details
+
+Add/Edit Word Modal:
+  Enter      Edit field / Save word
+  Tab        Save field and move to next
+  Esc        Cancel editing / Close modal
+  j/k        Navigate between fields
 `
