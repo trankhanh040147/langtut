@@ -7,13 +7,10 @@ import (
 	"github.com/trankhanh040147/langtut/internal/cli"
 )
 
-func init() {
-	cli.InitRoot()
-}
-
 func main() {
+	cli.InitRoot()
 	if err := cli.Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		os.Exit(1)
 	}
 }

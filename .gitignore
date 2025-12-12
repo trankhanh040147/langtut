@@ -42,4 +42,4 @@ Thumbs.db
 # Build output
 dist/
 build/
-
+/langtut

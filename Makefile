@@ -1,6 +1,6 @@
 # Go parameters
 BINARY_NAME=langtut
-MAIN_PACKAGE=./cmd
+MAIN_PACKAGE=./cmd/langtut
 GO=go
 
 # Build info
