@@ -1,0 +1,56 @@
+---
+alwaysApply: true
+---
+
+# langtut - Language Learning CLI Tool
+
+## Project Context
+- CLI: Go, Cobra, Bubbletea TUI, Vim navigation
+- Config: `~/.config/langtut/config.yaml`
+
+## Coding Principle
+### 1. UX & Interface Design
+- **Vim Navigation:** Use `j/k`, `g/G`, `/`. Update `internal/ui/help.go` immediately if shortcuts change.
+- **Input Strategy:** Keyboard-first actions. Minimize typing via AI, defaults, and interactive editing. Prefer TUI/modals over long flags.
+- **Layout:** Center via style width only; **never** calculate string length.
+- **Keybindings:** Map `Enter`/`Tab` to `save() + nextField()`. Tab must work in both editing and navigation modes. Show help with `?`. Define help text in `constants` (never inline).
+- **CRUD Logic:** `isEditMode` relies strictly on ID persistence (non-nil), not content.
+
+### 2. Core Go Implementation
+- **Structure:** Go 1.25+. Keep files/modules small. Constants in `[...constants.go]` (no hardcoding).
+- **File Size:** Manage code files into small parts to reduce token costs. Split large files, keep functions focused, prefer smaller modules
+- **Input Safety:** Single `bufio.NewReader(os.Stdin)` per function (never multiple). Trim input strings.
+- **Concurrency:** Use `errgroup.Group` (not `sync.WaitGroup`). Propagate errors. Handle context cancellation.
+- **Memory:** **Never** take address of map index (`&m[k]`). Assign to var first.
+- **Flow:** Use `Cobra.RunE`. Return errors to `main`. **No** `os.Exit` in library code. Listen for `os.Interrupt`.
+- **Timeouts:** Mandatory default timeouts for all Network/IO.
+
+### 3. System & Configuration
+- **Config:** YAML in `~/.config/langtut/config.yaml` (use `os.MkdirAll`). Set defaults.
+- **Platform:** Use `runtime.GOOS` for generic commands (open/explorer) and `$EDITOR`.
+- **Streams:** Output → `os.Stdout`. Logs/Errors → `os.Stderr`.
+- **TTY:** Check `isatty(stdout)`. Disable colors/spinners if piping or `NO_COLOR` set.
+- **Flags:** Unique short aliases per command. No redefinition in `init()`. Verify before adding.
+- **CRUD State:** `isEditMode` depends on **persistence** (e.g., non-nil ID), not content presence. Treat pre-filled new entities as `Create`.
+- **Navigation:** Map `Enter`/`Tab` to `save() + nextField()`. Tab navigation must work when not editing. Rely on static field indices.
+- **Multi-item Processing:** Reload shared state (e.g., library) at start of each iteration to ensure fresh state for each item.
+- **Layout:** Center elements via style width; **never** calculate width from string length.
+- **Help Text:** Centralize keybinding docs in `constants` (e.g., `HelpText`), never hardcode inline.
+- **Width Safety:** Guard `strings.Repeat` with `max(0, count)`. Guard width calculations to prevent negative values. Default to minimum width (80) if `Width() == 0` before first `WindowSizeMsg`.
+    
+### 4. Quality & Maintenance
+- **Standards:** Target A+ Report Card. Complexity ≤15. Run `gofmt -s`, `vet`, `staticcheck`, `misspell`.
+- **Errors:** Wrap all errors: `fmt.Errorf("ctx: %w", err)`.
+- **Deps:** Pin majors. Update periodically (`go get -u`). Run `govulncheck`.
+- **Bug Protocol:**
+    1. **Global Fix:** Regex search (`rg`) to fix pattern everywhere.
+    2. **Doc:** Update `DEVELOPMENT.md` (Known Bugs/Styles).
+    3. **Test:** Verify Interactive, Piped, and Redirected modes.
+
+## Bug Fix Protocol
+1. **Global Fix:** Search (`rg`/`fd`) for similar patterns, fix **all** occurrences
+2. **Documentation:** Update "Known Bugs" in `docs/DEVELOPMENT.md`, update "Coding Styles" if anti-pattern
+3. **Testing:** Verify Interactive, Piped (`|`), Redirected (`<`), Non-interactive modes
+
+## Code Style
+- Concise bullets over paragraphs, remove fluff, preserve meaning, clear actionable code
