@@ -22,6 +22,8 @@ alwaysApply: true
 - **Input Safety:** Single `bufio.NewReader(os.Stdin)` per function (never multiple). Trim input strings.
 - **Concurrency:** Use `errgroup.Group` (not `sync.WaitGroup`). Propagate errors. Handle context cancellation.
 - **Memory:** **Never** take address of map index (`&m[k]`). Assign to var first.
+* **Index Safety:** Verify bounds (`0 ≤ idx < len`) before access; explicitly handle empty slices (reset index to -1 or skip).
+* **Safe Mutation:** Cache original IDs/Keys **before** editing; execute deletions against the cached values, never against modified properties.
 - **Flow:** Use `Cobra.RunE`. Return errors to `main`. **No** `os.Exit` in library code. Listen for `os.Interrupt`.
 - **Timeouts:** Mandatory default timeouts for all Network/IO.
 

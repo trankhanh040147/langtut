@@ -80,7 +80,9 @@ func Load() (*Library, error) {
 	return lib, nil
 }
 
-// Save saves the vocabulary library to JSON file
+// Save saves the vocabulary library to JSON file using atomic write.
+// It writes to a temporary file first, then atomically renames it to the final destination.
+// This ensures data integrity even if the process is interrupted during the write operation.
 func Save(lib *Library) error {
 	vocabPath := GetVocabPath()
 	vocabDir := constants.GetConfigDir()
@@ -99,9 +101,23 @@ func Save(lib *Library) error {
 		return fmt.Errorf("failed to marshal vocab library: %w", err)
 	}
 
-	// Write to file
-	if err := os.WriteFile(vocabPath, data, 0600); err != nil {
+	// Atomic write: write to temporary file first, then rename
+	tmpPath := vocabPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
+		// Clean up temp file if it was partially created
+		if removeErr := os.Remove(tmpPath); removeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to remove temp file %s: %v\n", tmpPath, removeErr)
+		}
 		return fmt.Errorf("failed to write vocab file: %w", err)
+	}
+
+	// Atomically rename temp file to final destination
+	if err := os.Rename(tmpPath, vocabPath); err != nil {
+		// Clean up temp file on rename failure
+		if removeErr := os.Remove(tmpPath); removeErr != nil {
+			fmt.Fprintf(os.Stderr, "warning: failed to remove temp file %s: %v\n", tmpPath, removeErr)
+		}
+		return fmt.Errorf("failed to rename vocab file: %w", err)
 	}
 
 	return nil
@@ -148,6 +164,3 @@ func (lib *Library) GetAllWords() []*Word {
 	}
 	return words
 }
-
-
-

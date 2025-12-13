@@ -36,23 +36,11 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 ---
 
-# v0.1 - Vocabulary Module
+# v0.1.0 - Foundation + Vocabulary Module
 
 **Status:** In Progress
 
 **Features:**
-
-### Vocabulary Module
-- [x] Word library: Interactive TUI for CRUD operations
-  - `langtut vocab add <word>` - AI generates meaning/examples, user edits in modal
-  - `langtut vocab` or `langtut vocab list` - Split-pane TUI (word list + details)
-  - Keyboard shortcuts: `e` edit, `d` delete, `a` add, `/` search
-- [ ] Vocab guessing/typing: Show word → user types meaning → AI reviews
-- [ ] Phrase-based learning: Show phrases → prompt user for strange words → explain meaning
-- [ ] Export/sync library
-- [ ] TTS for word pronunciation
-- [ ] Topic-based learning
-- [ ] Daily random vocab
 
 ### Foundation
 - [x] Cobra CLI framework
@@ -60,24 +48,26 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 - [x] AI API client (Gemini) with streaming
 - [x] Config: `~/.config/langtut/config.yaml`
 - [x] Preset system for custom prompts
+### Vocabulary Module
+- [x] Word library: Interactive TUI for CRUD operations
+  - `langtut vocab add <word>` - AI generates meaning/examples, user edits in modal
+  - `langtut vocab` or `langtut vocab list` - Split-pane TUI (word list + details)
+  - Keyboard shortcuts: `e` edit, `d` delete, `a` add, `/` search
 
 ---
+# v0.1.1 - Foundation + Vocabulary Module
 
-# v0.2 - Reading Module
-
-**Status:** Planned
+**Status:** In Progress
 
 **Features:**
 
-### Reading Module
-- [ ] Read blog/article with AI assistance
-- [ ] Watch video with AI (URL input)
-- [ ] Interactive annotation (hover for definitions, pronunciation, examples)
-- [ ] Add words to library from content
-
----
-
-# v0.3 - Writing Module
+### Vocabulary Module
+- [ ] Vocab guessing/typing: 
+	- **`review_workflow`**: user types meaning → AI reviews (hint if guess wrong, user can guess again or choose to give up) --> Add word to library
+	- [ ] Show word (collocation/PV, etc.) → `review_workflow`
+	- [ ] Basic revise (no spaced repetition yet):  Show word from library → `review_workflow`
+	
+# v0.2 - Writing Module
 
 **Status:** Planned
 
@@ -89,6 +79,40 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 - [ ] Interactive conversations: AI helps fix mistakes, improve writing
 
 ---
+
+# v(?) 
+
+**Status:** Planned, new features/cut off from current release
+
+**Features:**
+
+### Vocabulary Module
+
+**Vocab Templates**
+- User choose a template when adding a new vocab:
+	- vocab add --> choose a template (select default)
+- Can set default template
+- Can CRUD template
+
+**Phrase-based learning:** 
+- [ ] Show phrases → prompt user for strange words → explain meaning
+- [ ] User enter a phrase + strange words (optional, empty = AI break down all) --> explain meaning --> add to library
+
+**Topic Based learning**
+- [ ] User choose a topic (empty for random by AI) --> AI generate words + phrases to learn
+
+- [ ] TTS for word pronunciation
+- [ ] Export/sync library
+
+
+### Reading Module
+- [ ] Read blog/article with AI assistance
+- [ ] Watch video with AI (URL input)
+- [ ] Interactive annotation (hover for definitions, pronunciation, examples)
+- [ ] Add words to library from content
+
+---
+
 
 # v0.4 - Spaced Repetition & Grammar
 
@@ -257,6 +281,9 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 **Vocabulary**
 - Common misunderstanding words
 - Multi-meaning words
+- Enhance list:
+	- Sort by date added
+	- Can change sort order 
 
 **Uncategorized**
 - Compare two languages side-by-side
@@ -276,17 +303,21 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 > Track and fix these issues.
 
-| Bug | Status | Notes |
-|-----|--------|-------|
-| StreamChat treats iterator.Done as error | Fixed | Fixed in `internal/api/gemini.go` - now checks `if err == iterator.Done` before treating as exception |
-| Cannot take address of map index expression | Fixed | Fixed in `internal/preset/preset.go:36` - assign to variable before taking address |
-| #bug01: Cannot save words after Enter until last step | Fixed | Fixed in `internal/ui/vocab/add_model.go:195-210` - Enter now saves immediately if word is valid and not editing |
-| #bug02: Cannot use Tab to navigate fields | Fixed | Fixed in `internal/ui/vocab/add_model.go:218-225` - Tab now navigates between fields when not editing |
-| #bug03: Multi-word add modal only shows last word | Fixed | Fixed in `internal/cli/vocab.go:114-143` - Library reloaded at start of each iteration, ensuring fresh state for each modal |
-| #bug04: Modal doesn't close after save, no success message | Fixed | Fixed in `internal/ui/vocab/add_model.go:410-413` - Success message "✓ Saved!" shown, modal closes on next Update cycle |
-| #bug05: Panic "strings: negative Repeat count" when terminal width uninitialized | Fixed | Fixed in `internal/ui/vocab/list_model.go` and `add_model.go` - All `strings.Repeat` calls guarded, width calculations prevent negative values, default width 80 if uninitialized |
-| #bug06: Cannot edit field by Enter, only by pressing `e` | Fixed | Fixed in `internal/ui/vocab/add_model.go:195-210` - Removed immediate save logic, Enter now always enters edit mode. Added Ctrl+S as dedicated save key |
-| #bug07: Modal doesn't auto-close after save in multi-word add | Fixed | Fixed in `internal/ui/vocab/add_model.go:316` - `saveWord()` now returns `tea.Quit` to auto-close modal. `list_model.go` updated to handle `tea.Quit` from embedded modal |
+| **Bug**                 | **Status** | **Resolution / Notes**                                                 |
+| ----------------------- | ---------- | ---------------------------------------------------------------------- |
+| **StreamChat Error**    | Fixed      | `api/gemini.go`: Ignore `iterator.Done` to prevent false errors.       |
+| **Map Address**         | Fixed      | `preset/preset.go`: Assign map value to temp var before addressing.    |
+| **#bug01: Enter Logic** | Fixed      | `add_model.go`: Enter saves immediately if input valid.                |
+| **#bug02: Tab Nav**     | Fixed      | `add_model.go`: Enabled Tab navigation between fields.                 |
+| **#bug03: Stale Modal** | Fixed      | `cli/vocab.go`: Force library reload per iteration for fresh state.    |
+| **#bug04: Feedback**    | Fixed      | `add_model.go`: Added "✓ Saved!" msg; triggers auto-close.             |
+| **#bug05: Width Panic** | Fixed      | `ui`: Guard `strings.Repeat` against negative; default width 80.       |
+| **#bug06: Edit Keys**   | Fixed      | `add_model.go`: Remapped Enter to **Edit**, `Ctrl+S` to **Save**.      |
+| **#bug07: Auto-close**  | Fixed      | `add_model.go`: `saveWord` returns `tea.Quit` to signal completion.    |
+| **#bug08: Duplication** | Fixed      | `add_model.go`: Cache original text/ID for safe delete/update.         |
+| **#bug09: List Help**   | Fixed      | `list_model.go`: Esc closes Help overlay before other handlers.        |
+| **#bug10: Index Panic** | Fixed      | `list_model.go`: Added bounds checks; handle empty lists (`idx = -1`). |
+| **#bug11: Add Help**    | Fixed      | `add_model.go`: Esc closes Help overlay before closing modal.          |
 
 ---
 > **Reminder**: Contents written in this file need to be condensed. Remove fluff, preserve meaning, maintain clarity for machine processing.

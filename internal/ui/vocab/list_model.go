@@ -73,19 +73,8 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.addModel.done {
 			if m.addModel.saved {
-				// Word was saved, reload library
-				lib, err := vocab.Load()
-				if err != nil {
-					m.err = err
-				} else {
-					m.library = lib
-					words := lib.GetAllWords()
-					sort.Slice(words, func(i, j int) bool {
-						return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
-					})
-					m.words = words
-					m.applySearch()
-				}
+				// Word was saved, refresh from in-memory library
+				m.refreshWordsFromLibrary()
 			}
 			m.showAddModal = false
 			m.addModel = nil
@@ -104,26 +93,9 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.addModel.done {
 			if m.addModel.saved {
-				// Word was saved, reload library
-				lib, err := vocab.Load()
-				if err != nil {
-					m.err = err
-				} else {
-					m.library = lib
-					words := lib.GetAllWords()
-					sort.Slice(words, func(i, j int) bool {
-						return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
-					})
-					m.words = words
-					m.applySearch()
-					// Maintain selection
-					if m.selectedIdx >= len(m.filteredWords) {
-						m.selectedIdx = len(m.filteredWords) - 1
-					}
-					if m.selectedIdx < 0 {
-						m.selectedIdx = 0
-					}
-				}
+				// Word was saved, refresh from in-memory library
+				m.refreshWordsFromLibrary()
+				// Maintain selection (applySearch already handles bounds)
 			}
 			m.showEditModal = false
 			m.addModel = nil
@@ -144,31 +116,15 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch msg.String() {
 			case "y", "Y":
 				// Delete word
-				if m.selectedIdx < len(m.filteredWords) {
+				if m.hasValidSelection() {
 					word := m.filteredWords[m.selectedIdx]
 					m.library.DeleteWord(word.Word)
 					if err := vocab.Save(m.library); err != nil {
 						m.err = err
 					} else {
 						// Reload
-						lib, err := vocab.Load()
-						if err != nil {
-							m.err = err
-						} else {
-							m.library = lib
-							words := lib.GetAllWords()
-							sort.Slice(words, func(i, j int) bool {
-								return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
-							})
-							m.words = words
-							m.applySearch()
-							if m.selectedIdx >= len(m.filteredWords) {
-								m.selectedIdx = len(m.filteredWords) - 1
-							}
-							if m.selectedIdx < 0 {
-								m.selectedIdx = 0
-							}
-						}
+						m.reloadLibrary()
+						// Selection bounds already handled by applySearch()
 					}
 				}
 				m.showDeleteConfirm = false
@@ -207,6 +163,13 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.SetShowHelp(!m.ShowHelp())
 			return m, nil
 
+		case constants.KeyEsc:
+			// Close help overlay if shown
+			if m.ShowHelp() {
+				m.SetShowHelp(false)
+				return m, nil
+			}
+
 		case constants.KeyCtrlC, constants.KeyQuit:
 			return m, tea.Quit
 
@@ -243,7 +206,7 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.addModel.Init()
 
 		case constants.KeyEdit:
-			if m.selectedIdx < len(m.filteredWords) {
+			if m.hasValidSelection() {
 				m.showEditModal = true
 				m.editWord = m.filteredWords[m.selectedIdx]
 				// Create a copy for editing
@@ -256,7 +219,7 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case constants.KeyDelete:
-			if m.selectedIdx < len(m.filteredWords) {
+			if m.hasValidSelection() {
 				m.showDeleteConfirm = true
 			}
 			return m, nil
@@ -283,12 +246,47 @@ func (m *listModel) applySearch() {
 			}
 		}
 	}
-	if m.selectedIdx >= len(m.filteredWords) {
-		m.selectedIdx = len(m.filteredWords) - 1
+	// Adjust selectedIdx to valid range
+	if len(m.filteredWords) == 0 {
+		m.selectedIdx = -1
+	} else {
+		if m.selectedIdx >= len(m.filteredWords) {
+			m.selectedIdx = len(m.filteredWords) - 1
+		}
+		if m.selectedIdx < 0 {
+			m.selectedIdx = 0
+		}
 	}
-	if m.selectedIdx < 0 && len(m.filteredWords) > 0 {
-		m.selectedIdx = 0
+}
+
+func (m *listModel) reloadLibrary() {
+	lib, err := vocab.Load()
+	if err != nil {
+		m.err = err
+		return
 	}
+
+	m.library = lib
+	words := lib.GetAllWords()
+	sort.Slice(words, func(i, j int) bool {
+		return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
+	})
+	m.words = words
+	m.applySearch()
+}
+
+func (m *listModel) refreshWordsFromLibrary() {
+	// Re-fetch words from the in-memory library object
+	words := m.library.GetAllWords()
+	sort.Slice(words, func(i, j int) bool {
+		return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
+	})
+	m.words = words
+	m.applySearch() // This already handles selection bounds
+}
+
+func (m *listModel) hasValidSelection() bool {
+	return m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredWords)
 }
 
 func (m *listModel) safeWidth() int {
@@ -412,7 +410,7 @@ func (m *listModel) renderWordList(width, height int) string {
 func (m *listModel) renderWordDetails(width, height int) string {
 	var lines []string
 
-	if m.selectedIdx >= len(m.filteredWords) {
+	if m.selectedIdx < 0 || m.selectedIdx >= len(m.filteredWords) {
 		lines = append(lines, "No word selected")
 		return lipgloss.NewStyle().Width(width).Height(height).Render(strings.Join(lines, "\n"))
 	}
@@ -484,7 +482,12 @@ func (m *listModel) renderDeleteConfirm() string {
 		Padding(1, 2).
 		Width(width)
 
-	content := "Delete word: " + m.filteredWords[m.selectedIdx].Word + "?\n\n"
+	var content string
+	if m.hasValidSelection() {
+		content = "Delete word: " + m.filteredWords[m.selectedIdx].Word + "?\n\n"
+	} else {
+		content = "Delete word: (invalid selection)?\n\n"
+	}
 	content += "Press 'y' to confirm, 'n' to cancel"
 
 	box := boxStyle.Render(content)
