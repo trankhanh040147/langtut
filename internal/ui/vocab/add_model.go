@@ -13,6 +13,21 @@ import (
 	"github.com/trankhanh040147/langtut/internal/vocab"
 )
 
+const (
+	fieldWord = iota
+	fieldMeaning
+	fieldExample1
+	fieldExample2
+	fieldExample3
+	fieldSave
+	fieldCount // Total number of fields
+)
+
+// WordInfoGenerator defines the interface for generating word information
+type WordInfoGenerator interface {
+	GenerateWordInfo(ctx context.Context, word, language string) (string, []string, error)
+}
+
 type addModel struct {
 	ui.BaseModel
 	word         string
@@ -22,16 +37,16 @@ type addModel struct {
 	editingField int
 	editBuffer   string
 	library      *vocab.Library
-	apiClient    interface {
-		GenerateWordInfo(ctx context.Context, word, language string) (string, []string, error)
-	}
+	apiClient    WordInfoGenerator
 	language     string
 	isGenerating bool
 	isEditMode   bool
-	originalWord   *vocab.Word
+	originalWord *vocab.Word
 	done         bool
 	saved        bool
 	err          error
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 type wordInfoGeneratedMsg struct {
@@ -41,23 +56,24 @@ type wordInfoGeneratedMsg struct {
 }
 
 func NewAddModel(word, meaning string, examples []string, lib *vocab.Library) *addModel {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &addModel{
 		BaseModel:    ui.BaseModel{},
 		word:         word,
 		meaning:      meaning,
 		examples:     examples,
-		currentField: 0,
-		editingField:  -1,
+		currentField: fieldWord,
+		editingField: -1,
 		library:      lib,
 		language:     "English", // Default, can be from config
-		isEditMode:   false, // Only set to true when editing existing word (originalWord != nil)
+		isEditMode:   false,     // Only set to true when editing existing word (originalWord != nil)
 		originalWord: nil,
+		ctx:          ctx,
+		cancel:       cancel,
 	}
 }
 
-func (m *addModel) SetAPIClient(client interface {
-	GenerateWordInfo(ctx context.Context, word, language string) (string, []string, error)
-}) {
+func (m *addModel) SetAPIClient(client WordInfoGenerator) {
 	m.apiClient = client
 }
 
@@ -95,7 +111,10 @@ func (m *addModel) generateWordInfo() tea.Cmd {
 		if m.apiClient == nil {
 			return wordInfoGeneratedMsg{err: fmt.Errorf("API client not set")}
 		}
-		ctx := context.Background()
+		ctx := m.ctx
+		if ctx == nil {
+			ctx = context.Background()
+		}
 		meaning, examples, err := m.apiClient.GenerateWordInfo(ctx, m.word, m.language)
 		return wordInfoGeneratedMsg{
 			meaning:  meaning,
@@ -132,9 +151,8 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editBuffer = ""
 				// Advance to next field
 				m.currentField++
-				maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
-				if m.currentField > maxField {
-					m.currentField = 0
+				if m.currentField >= fieldCount {
+					m.currentField = fieldWord
 				}
 			case constants.KeyEsc:
 				// Cancel editing
@@ -150,9 +168,8 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.editingField = -1
 				m.editBuffer = ""
 				m.currentField++
-				maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
-				if m.currentField > maxField {
-					m.currentField = 0
+				if m.currentField >= fieldCount {
+					m.currentField = fieldWord
 				}
 			default:
 				if len(msg.Runes) > 0 {
@@ -170,32 +187,43 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case constants.KeyCtrlC, constants.KeyQuit:
 			m.done = true
 			m.saved = false
+			if m.cancel != nil {
+				m.cancel()
+			}
 			return m, tea.Quit
 
 		case constants.KeyEsc:
+			// Close help overlay if shown
+			if m.ShowHelp() {
+				m.SetShowHelp(false)
+				return m, nil
+			}
+			// Otherwise close modal
 			m.done = true
 			m.saved = false
+			if m.cancel != nil {
+				m.cancel()
+			}
 			return m, nil
 
 		case constants.KeyDown:
 			m.currentField++
-			maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
-			if m.currentField > maxField {
-				m.currentField = 0
+			if m.currentField >= fieldCount {
+				m.currentField = fieldWord
 			}
 			return m, nil
 
 		case constants.KeyUp:
 			m.currentField--
 			if m.currentField < 0 {
-				m.currentField = 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
+				m.currentField = fieldSave
 			}
 			return m, nil
 
 		case constants.KeyEnter:
 			// Start editing current field or save current field and advance
-			if m.currentField == 5 {
-				// Save button (always at index 5: Word(0), Meaning(1), Examples(2-4), Save(5))
+			if m.currentField == fieldSave {
+				// Save button
 				return m.saveWord()
 			} else {
 				// Enter edit mode for current field
@@ -217,9 +245,8 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "tab":
 			// Navigate to next field when not editing
 			m.currentField++
-			maxField := 5 // Word(0), Meaning(1), Examples(2-4), Save(5)
-			if m.currentField > maxField {
-				m.currentField = 0
+			if m.currentField >= fieldCount {
+				m.currentField = fieldWord
 			}
 			return m, nil
 		}
@@ -230,48 +257,63 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *addModel) loadCurrentFieldToBuffer() {
 	switch m.currentField {
-	case 0:
+	case fieldWord:
 		m.editBuffer = m.word
-	case 1:
+	case fieldMeaning:
 		m.editBuffer = m.meaning
-	case 2:
+	case fieldExample1:
 		// First example
 		if len(m.examples) > 0 {
 			m.editBuffer = m.examples[0]
 		} else {
 			m.editBuffer = ""
 		}
-	default:
-		// Additional examples
-		idx := m.currentField - 2
-		if idx < len(m.examples) {
-			m.editBuffer = m.examples[idx]
+	case fieldExample2:
+		// Second example
+		if len(m.examples) > 1 {
+			m.editBuffer = m.examples[1]
 		} else {
 			m.editBuffer = ""
 		}
+	case fieldExample3:
+		// Third example
+		if len(m.examples) > 2 {
+			m.editBuffer = m.examples[2]
+		} else {
+			m.editBuffer = ""
+		}
+	default:
+		m.editBuffer = ""
 	}
 }
 
 func (m *addModel) saveCurrentField() {
 	switch m.editingField {
-	case 0:
+	case fieldWord:
 		m.word = m.editBuffer
-	case 1:
+	case fieldMeaning:
 		m.meaning = m.editBuffer
-	case 2:
+	case fieldExample1:
 		// First example
 		if len(m.examples) == 0 {
 			m.examples = []string{m.editBuffer}
 		} else {
 			m.examples[0] = m.editBuffer
 		}
-	default:
-		// Additional examples
-		idx := m.editingField - 2
-		for len(m.examples) <= idx {
+	case fieldExample2:
+		// Second example
+		for len(m.examples) <= 1 {
 			m.examples = append(m.examples, "")
 		}
-		m.examples[idx] = m.editBuffer
+		m.examples[1] = m.editBuffer
+	case fieldExample3:
+		// Third example
+		for len(m.examples) <= 2 {
+			m.examples = append(m.examples, "")
+		}
+		m.examples[2] = m.editBuffer
+	default:
+		// Ignore invalid field
 	}
 }
 
@@ -281,15 +323,36 @@ func (m *addModel) saveWord() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Create or update word
-	var word *vocab.Word
+	// Create a copy of the library to modify
+	// This ensures we don't corrupt in-memory state if save fails
+	libraryCopy := &vocab.Library{
+		Words:    make(map[string]*vocab.Word, len(m.library.Words)),
+		Metadata: m.library.Metadata,
+	}
+	for k, v := range m.library.Words {
+		libraryCopy.Words[k] = v
+	}
+
+	// If editing, delete old word from copy if key changed
 	if m.isEditMode && m.originalWord != nil {
-		word = m.originalWord
-		word.Word = m.word
-		word.Meaning = m.meaning
-		word.Examples = m.examples
+		originalKey := vocab.NormalizeWord(m.originalWord.Word)
+		newKey := vocab.NormalizeWord(m.word)
+		if originalKey != newKey {
+			delete(libraryCopy.Words, originalKey)
+		}
+	}
+
+	// Create or update word object
+	var wordToSave *vocab.Word
+	if m.isEditMode && m.originalWord != nil {
+		// Update existing word
+		wordToSave = m.originalWord
+		wordToSave.Word = m.word
+		wordToSave.Meaning = m.meaning
+		wordToSave.Examples = m.examples
 	} else {
-		word = &vocab.Word{
+		// Create new word
+		wordToSave = &vocab.Word{
 			Word:      m.word,
 			Meaning:   m.meaning,
 			Language:  m.language,
@@ -299,20 +362,22 @@ func (m *addModel) saveWord() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// If editing, delete old word first
-	if m.isEditMode && m.originalWord != nil {
-		m.library.DeleteWord(m.originalWord.Word)
-	}
+	libraryCopy.AddWord(wordToSave)
 
-	m.library.AddWord(word)
-
-	if err := vocab.Save(m.library); err != nil {
+	// Attempt to save the copy
+	if err := vocab.Save(libraryCopy); err != nil {
 		m.err = err
+		// Original m.library remains untouched and consistent
 		return m, nil
 	}
 
+	// On success, replace the model's library with the successfully saved version
+	m.library = libraryCopy
 	m.done = true
 	m.saved = true
+	if m.cancel != nil {
+		m.cancel()
+	}
 	return m, tea.Quit
 }
 
@@ -350,10 +415,10 @@ func (m *addModel) View() string {
 	} else {
 		// Word field
 		wordLabel := "Word:"
-		if m.currentField == 0 {
+		if m.currentField == fieldWord {
 			wordLabel = "▶ Word:"
 		}
-		if m.editingField == 0 {
+		if m.editingField == fieldWord {
 			lines = append(lines, wordLabel+" "+m.editBuffer+"█")
 		} else {
 			wordValue := m.word
@@ -365,10 +430,10 @@ func (m *addModel) View() string {
 
 		// Meaning field
 		meaningLabel := "Meaning:"
-		if m.currentField == 1 {
+		if m.currentField == fieldMeaning {
 			meaningLabel = "▶ Meaning:"
 		}
-		if m.editingField == 1 {
+		if m.editingField == fieldMeaning {
 			lines = append(lines, meaningLabel)
 			lines = append(lines, "  "+m.editBuffer+"█")
 		} else {
@@ -382,8 +447,8 @@ func (m *addModel) View() string {
 		// Examples
 		lines = append(lines, "")
 		lines = append(lines, "Examples:")
-		for i := 0; i < 3; i++ {
-			fieldIdx := 2 + i
+		exampleFields := []int{fieldExample1, fieldExample2, fieldExample3}
+		for i, fieldIdx := range exampleFields {
 			exLabel := fmt.Sprintf("  %d.", i+1)
 			if m.currentField == fieldIdx {
 				exLabel = "▶ " + exLabel
@@ -405,8 +470,7 @@ func (m *addModel) View() string {
 		// Save button
 		lines = append(lines, "")
 		saveLabel := "[Save]"
-		if m.currentField == 5 {
-			// Save button always at index 5: Word(0), Meaning(1), Examples(2-4), Save(5)
+		if m.currentField == fieldSave {
 			saveLabel = "▶ [Save]"
 		}
 		lines = append(lines, saveLabel)
@@ -455,4 +519,3 @@ func (m *addModel) View() string {
 
 	return result
 }
-
