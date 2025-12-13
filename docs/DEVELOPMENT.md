@@ -55,13 +55,13 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
   - Keyboard shortcuts: `e` edit, `d` delete, `a` add, `/` search
 
 ---
-# v0.1.1 - Foundation + Vocabulary Module
+# v0.1.1 - ?
 
 **Status:** In Progress
 
 **Features:**
 
-### Vocabulary Module
+### ?686
 - [ ] Vocab guessing/typing: 
 	- **`review_workflow`**: user types meaning → AI reviews (hint if guess wrong, user can guess again or choose to give up) --> Add word to library
 	- [ ] Show word (collocation/PV, etc.) → `review_workflow`
