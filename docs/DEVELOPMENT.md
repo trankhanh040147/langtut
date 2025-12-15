@@ -56,18 +56,6 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 ---
 
-Here is the revised roadmap, split into **v0.1.2 (Depth: Polysemy)** and **v0.1.3 (Width: Relationships)**.
-
-### Review & Strategy
-* **v0.1.2 Focus:** **"Depth"**. Changing the atomic unit of the library from a simple string pair to a complex object (`Meanings[]`). This effectively handles words with multiple contexts (Polysemy) and rich metadata (Examples).
-* **v0.1.3 Focus:** **"Network"**. Connecting these objects. This introduces the graph-like features (Synonyms, Family Trees, Root Words) once the node structure is stable.
-
----
-
-Here is the updated **v0.1.2** roadmap, explicitly integrating **Part of Speech (POS) / Type** into the data structure, UI, and AI logic.
-
----
-
 # v0.1.2 - Nested meanings
 
 **Status:** Planned
@@ -102,6 +90,9 @@ Here is the updated **v0.1.2** roadmap, explicitly integrating **Part of Speech 
     - **Header:** `[Type] Definition` (e.g., `[Verb] To move fast`).
     - **Badge:** Context tag (e.g., `[Business]`).
     - **Body:** Examples rendered in italics below each definition.
+
+#### Issues
+- [ ] IS01: Wrong "Add Workflow" --> Do not type context
 
 ---
 # v0.1.3 - Word Graph
