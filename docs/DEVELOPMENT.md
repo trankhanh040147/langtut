@@ -55,13 +55,96 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
   - Keyboard shortcuts: `e` edit, `d` delete, `a` add, `/` search
 
 ---
-# v0.1.1 - ?
+
+Here is the revised roadmap, split into **v0.1.2 (Depth: Polysemy)** and **v0.1.3 (Width: Relationships)**.
+
+### Review & Strategy
+* **v0.1.2 Focus:** **"Depth"**. Changing the atomic unit of the library from a simple string pair to a complex object (`Meanings[]`). This effectively handles words with multiple contexts (Polysemy) and rich metadata (Examples).
+* **v0.1.3 Focus:** **"Network"**. Connecting these objects. This introduces the graph-like features (Synonyms, Family Trees, Root Words) once the node structure is stable.
+
+---
+
+Here is the updated **v0.1.2** roadmap, explicitly integrating **Part of Speech (POS) / Type** into the data structure, UI, and AI logic.
+
+---
+
+# v0.1.2 - Nested meanings
+
+**Status:** Planned
+**Focus:** Nested meanings, Part of Speech (POS), context-aware definitions, and the "Rich Add" workflow.
+
+#### 1. Core Data Refactor (Vertical)
+- [ ] **Struct Migration:** Refactor `Vocab` to replace flat definition with a slice.
+    - `Definition string` $\rightarrow$ `Meanings []Meaning`.
+    - `Meaning` struct includes:
+        - `Type` (String: "verb", "noun", "idiom", "phrasal_verb", etc.).
+        - `Definition` (String).
+        - `Context` (String: Tag or Sentence).
+        - `Examples` ([]String: List of usage sentences).
+
+#### 2. Advanced CRUD (TUI)
+- [ ] **Rich "Add" Modal (Fields 1-5):**
+    - **Input Form:**
+        1.  `Term`: The word (Locked if appending).
+        2.  `Type`: **Selection List** (Verb, Noun, Adjective, Phrasal Verb, Idiom, Collocation). (*Optional*, AI will decide on context)
+        3.  `Context`: A tag (e.g., "Medical") **OR** a raw sentence containing the word (*Optional*).
+    - **AI Logic:** Update `GenerateDefinition`:
+        - Input: `Term` + `Context` (*optional*).
+        - Output: Returns structured JSON including inferred `Type`, `Definition`, and relevant `Examples`.
+- [ ] **Smart Duplicate Handling:**
+    - **Detection:** If `Term` exists, block "Create New".
+    - **Action:** Prompt "Append Meaning?".
+    - **UI:** Open Add Modal with `Term` locked, focus starts on `Type` selection.
+
+#### 3. Enhanced Detail View
+- [ ] **List Rendering:** Update `list_model` to show `Term` + `Meanings.Type` (short badge) + `Meanings.Definition` (preview).
+- [ ] **Detail Pane:** Iterate over `Meanings[]` with visual hierarchy:
+    - **Header:** `[Type] Definition` (e.g., `[Verb] To move fast`).
+    - **Badge:** Context tag (e.g., `[Business]`).
+    - **Body:** Examples rendered in italics below each definition.
+
+---
+# v0.1.3 - Word Graph
+
+**Status:** Planned
+**Focus:** Word relationships, family trees, and navigation.
+
+#### 1. Core Data Refactor (Horizontal)
+- [ ] **Struct Update:** Add relational fields to `Vocab`.
+    - `RootWord`: String (Parent pointer).
+    - `Synonyms`: `[]string`.
+    - `Antonyms`: `[]string`.
+    - `Acronyms`: `[]string`.
+
+#### 2. Advanced CRUD (TUI)
+- [ ] **Extended "Add" Modal:**
+    - **New Field:** Add `Synonyms / Acronyms` input (Field 5).
+    - **Logic:** Accept comma-separated strings.
+- [ ] **Family Linking:**
+    - **Action:** "Link to Root" command in Edit Mode.
+    - **UI:** Simple input to type the root word (e.g., set "happy" as root for "unhappiness").
+
+#### 3. Networked UI
+- [ ] **Wiki-Links:**
+    - **Interaction:** Make Synonyms/Antonyms clickable/selectable in Detail View.
+    - **Navigation:** Pressing `Enter` on a synonym jumps to that word if it exists.
+- [ ] **Family Tree View:**
+    - **Query:** `FindDerived(rootWord)` function.
+    - **Display:** In Detail View, list all words where `RootWord == CurrentTerm`.
+
+---
+
+# v0.1.3 - Review
 
 **Status:** In Progress
 
 **Features:**
 
-### ?686
+#### 1. Review Workflow
+
+- [ ] **Context Hint:** Flashcards show `Term` + `[Context]` (e.g. "Run [Business]") so the user knows which definition to recall.
+
+### ?
 - [ ] Vocab guessing/typing: 
 	- **`review_workflow`**: user types meaning → AI reviews (hint if guess wrong, user can guess again or choose to give up) --> Add word to library
 	- [ ] Show word (collocation/PV, etc.) → `review_workflow`

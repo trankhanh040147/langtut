@@ -44,10 +44,6 @@ alwaysApply: true
 - **Standards:** Target A+ Report Card. Complexity ≤15. Run `gofmt -s`, `vet`, `staticcheck`, `misspell`.
 - **Errors:** Wrap all errors: `fmt.Errorf("ctx: %w", err)`.
 - **Deps:** Pin majors. Update periodically (`go get -u`). Run `govulncheck`.
-- **Bug Protocol:**
-    1. **Global Fix:** Regex search (`rg`) to fix pattern everywhere.
-    2. **Doc:** Update `DEVELOPMENT.md` (Known Bugs/Styles).
-    3. **Test:** Verify Interactive, Piped, and Redirected modes.
 
 ## Bug Fix Protocol
 1. **Global Fix:** Search (`rg`/`fd`) for similar patterns, fix **all** occurrences

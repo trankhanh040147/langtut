@@ -15,15 +15,16 @@ import (
 type listModel struct {
 	ui.BaseModel
 	library           *vocab.Library
-	words             []*vocab.Word
-	filteredWords     []*vocab.Word
+	vocabs            []*vocab.Vocab
+	filteredVocabs    []*vocab.Vocab
 	selectedIdx       int
 	searchQuery       string
 	isSearching       bool
 	showAddModal      bool
 	showEditModal     bool
 	showDeleteConfirm bool
-	editWord          *vocab.Word
+	editVocab         *vocab.Vocab
+	editMeaning       *vocab.Meaning
 	addModel          *addModel
 	err               error
 }
@@ -45,17 +46,17 @@ type wordDeletedMsg struct {
 }
 
 func NewListModel(lib *vocab.Library) *listModel {
-	words := lib.GetAllWords()
-	sort.Slice(words, func(i, j int) bool {
-		return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
+	vocabs := lib.GetAllVocabs()
+	sort.Slice(vocabs, func(i, j int) bool {
+		return strings.ToLower(vocabs[i].Term) < strings.ToLower(vocabs[j].Term)
 	})
 
 	return &listModel{
-		BaseModel:     ui.BaseModel{},
-		library:       lib,
-		words:         words,
-		filteredWords: words,
-		selectedIdx:   0,
+		BaseModel:      ui.BaseModel{},
+		library:        lib,
+		vocabs:         vocabs,
+		filteredVocabs: vocabs,
+		selectedIdx:    0,
 	}
 }
 
@@ -73,8 +74,8 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.addModel.done {
 			if m.addModel.saved {
-				// Word was saved, refresh from in-memory library
-				m.refreshWordsFromLibrary()
+				// Vocab was saved, refresh from in-memory library
+				m.refreshVocabsFromLibrary()
 			}
 			m.showAddModal = false
 			m.addModel = nil
@@ -93,13 +94,14 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		if m.addModel.done {
 			if m.addModel.saved {
-				// Word was saved, refresh from in-memory library
-				m.refreshWordsFromLibrary()
+				// Vocab was saved, refresh from in-memory library
+				m.refreshVocabsFromLibrary()
 				// Maintain selection (applySearch already handles bounds)
 			}
 			m.showEditModal = false
 			m.addModel = nil
-			m.editWord = nil
+			m.editVocab = nil
+			m.editMeaning = nil
 			// Don't propagate tea.Quit from addModel - just close the modal
 			return m, nil
 		}
@@ -115,10 +117,10 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if m.showDeleteConfirm {
 			switch msg.String() {
 			case "y", "Y":
-				// Delete word
+				// Delete vocab
 				if m.hasValidSelection() {
-					word := m.filteredWords[m.selectedIdx]
-					m.library.DeleteWord(word.Word)
+					v := m.filteredVocabs[m.selectedIdx]
+					m.library.DeleteVocab(v.Term)
 					if err := vocab.Save(m.library); err != nil {
 						m.err = err
 					} else {
@@ -174,7 +176,7 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case constants.KeyDown:
-			if m.selectedIdx < len(m.filteredWords)-1 {
+			if m.selectedIdx < len(m.filteredVocabs)-1 {
 				m.selectedIdx++
 			}
 			return m, nil
@@ -190,8 +192,8 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case constants.KeyBottom:
-			if len(m.filteredWords) > 0 {
-				m.selectedIdx = len(m.filteredWords) - 1
+			if len(m.filteredVocabs) > 0 {
+				m.selectedIdx = len(m.filteredVocabs) - 1
 			}
 			return m, nil
 
@@ -208,13 +210,23 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case constants.KeyEdit:
 			if m.hasValidSelection() {
 				m.showEditModal = true
-				m.editWord = m.filteredWords[m.selectedIdx]
-				// Create a copy for editing
-				editWordCopy := *m.editWord
-				m.addModel = NewAddModel(editWordCopy.Word, editWordCopy.Meaning, editWordCopy.Examples, m.library)
-				m.addModel.originalWord = m.editWord
-				m.addModel.isEditMode = true
-				return m, m.addModel.Init()
+				m.editVocab = m.filteredVocabs[m.selectedIdx]
+				// Edit first meaning by default (can enhance later to select meaning)
+				if len(m.editVocab.Meanings) > 0 {
+					m.editMeaning = &m.editVocab.Meanings[0]
+					m.addModel = NewAddModel(
+						m.editVocab.Term,
+						m.editMeaning.Definition,
+						m.editMeaning.Examples,
+						m.library,
+					)
+					m.addModel.meaningType = m.editMeaning.Type
+					m.addModel.context = m.editMeaning.Context
+					m.addModel.originalMeaning = m.editMeaning
+					m.addModel.existingVocab = m.editVocab
+					m.addModel.isEditMode = true
+					return m, m.addModel.Init()
+				}
 			}
 			return m, nil
 
@@ -235,23 +247,32 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m *listModel) applySearch() {
 	if m.searchQuery == "" {
-		m.filteredWords = m.words
+		m.filteredVocabs = m.vocabs
 	} else {
 		query := strings.ToLower(m.searchQuery)
-		m.filteredWords = []*vocab.Word{}
-		for _, word := range m.words {
-			if strings.Contains(strings.ToLower(word.Word), query) ||
-				strings.Contains(strings.ToLower(word.Meaning), query) {
-				m.filteredWords = append(m.filteredWords, word)
+		m.filteredVocabs = []*vocab.Vocab{}
+		for _, v := range m.vocabs {
+			// Search in term
+			if strings.Contains(strings.ToLower(v.Term), query) {
+				m.filteredVocabs = append(m.filteredVocabs, v)
+				continue
+			}
+			// Search in all meanings
+			for _, meaning := range v.Meanings {
+				if strings.Contains(strings.ToLower(meaning.Definition), query) ||
+					strings.Contains(strings.ToLower(meaning.Context), query) {
+					m.filteredVocabs = append(m.filteredVocabs, v)
+					break
+				}
 			}
 		}
 	}
 	// Adjust selectedIdx to valid range
-	if len(m.filteredWords) == 0 {
+	if len(m.filteredVocabs) == 0 {
 		m.selectedIdx = -1
 	} else {
-		if m.selectedIdx >= len(m.filteredWords) {
-			m.selectedIdx = len(m.filteredWords) - 1
+		if m.selectedIdx >= len(m.filteredVocabs) {
+			m.selectedIdx = len(m.filteredVocabs) - 1
 		}
 		if m.selectedIdx < 0 {
 			m.selectedIdx = 0
@@ -267,26 +288,26 @@ func (m *listModel) reloadLibrary() {
 	}
 
 	m.library = lib
-	words := lib.GetAllWords()
-	sort.Slice(words, func(i, j int) bool {
-		return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
+	vocabs := lib.GetAllVocabs()
+	sort.Slice(vocabs, func(i, j int) bool {
+		return strings.ToLower(vocabs[i].Term) < strings.ToLower(vocabs[j].Term)
 	})
-	m.words = words
+	m.vocabs = vocabs
 	m.applySearch()
 }
 
-func (m *listModel) refreshWordsFromLibrary() {
-	// Re-fetch words from the in-memory library object
-	words := m.library.GetAllWords()
-	sort.Slice(words, func(i, j int) bool {
-		return strings.ToLower(words[i].Word) < strings.ToLower(words[j].Word)
+func (m *listModel) refreshVocabsFromLibrary() {
+	// Re-fetch vocabs from the in-memory library object
+	vocabs := m.library.GetAllVocabs()
+	sort.Slice(vocabs, func(i, j int) bool {
+		return strings.ToLower(vocabs[i].Term) < strings.ToLower(vocabs[j].Term)
 	})
-	m.words = words
+	m.vocabs = vocabs
 	m.applySearch() // This already handles selection bounds
 }
 
 func (m *listModel) hasValidSelection() bool {
-	return m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredWords)
+	return m.selectedIdx >= 0 && m.selectedIdx < len(m.filteredVocabs)
 }
 
 func (m *listModel) safeWidth() int {
@@ -325,8 +346,8 @@ func (m *listModel) View() string {
 		rightWidth = 1
 	}
 
-	leftPane := m.renderWordList(leftWidth, m.Height())
-	rightPane := m.renderWordDetails(rightWidth, m.Height())
+	leftPane := m.renderVocabList(leftWidth, m.Height())
+	rightPane := m.renderVocabDetails(rightWidth, m.Height())
 
 	// Combine panes
 	content := lipgloss.JoinHorizontal(lipgloss.Left, leftPane, "│", rightPane)
@@ -341,7 +362,7 @@ func (m *listModel) View() string {
 	return content
 }
 
-func (m *listModel) renderWordList(width, height int) string {
+func (m *listModel) renderVocabList(width, height int) string {
 	var lines []string
 
 	// Header
@@ -349,11 +370,11 @@ func (m *listModel) renderWordList(width, height int) string {
 		Bold(true).
 		Foreground(lipgloss.Color("205")).
 		Padding(0, 1)
-	header := headerStyle.Render("Words")
+	header := headerStyle.Render("Terms")
 	if m.isSearching {
 		header += fmt.Sprintf(" (Search: %s)", m.searchQuery)
 	} else {
-		header += fmt.Sprintf(" (%d)", len(m.filteredWords))
+		header += fmt.Sprintf(" (%d)", len(m.filteredVocabs))
 	}
 	lines = append(lines, header)
 	repeatCount := width
@@ -362,28 +383,41 @@ func (m *listModel) renderWordList(width, height int) string {
 	}
 	lines = append(lines, strings.Repeat("─", repeatCount))
 
-	// Word list
+	// Vocab list
 	listHeight := height - 3
 	startIdx := 0
 	if m.selectedIdx >= listHeight {
 		startIdx = m.selectedIdx - listHeight + 1
 	}
 
-	for i := startIdx; i < len(m.filteredWords) && i < startIdx+listHeight; i++ {
-		word := m.filteredWords[i]
-		wordText := word.Word
+	for i := startIdx; i < len(m.filteredVocabs) && i < startIdx+listHeight; i++ {
+		v := m.filteredVocabs[i]
+		termText := v.Term
+		// Add meaning count badge
+		if len(v.Meanings) > 1 {
+			countBadge := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("8")).
+				Render(fmt.Sprintf(" (%d)", len(v.Meanings)))
+			termText += countBadge
+		}
 
 		// Highlight search matches
 		if m.searchQuery != "" {
 			query := strings.ToLower(m.searchQuery)
-			wordLower := strings.ToLower(wordText)
-			if strings.Contains(wordLower, query) {
-				idx := strings.Index(wordLower, query)
-				before := wordText[:idx]
-				match := wordText[idx : idx+len(m.searchQuery)]
-				after := wordText[idx+len(m.searchQuery):]
+			termLower := strings.ToLower(v.Term)
+			if strings.Contains(termLower, query) {
+				idx := strings.Index(termLower, query)
+				before := v.Term[:idx]
+				match := v.Term[idx : idx+len(m.searchQuery)]
+				after := v.Term[idx+len(m.searchQuery):]
 				highlightStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("3"))
-				wordText = before + highlightStyle.Render(match) + after
+				termText = before + highlightStyle.Render(match) + after
+				if len(v.Meanings) > 1 {
+					countBadge := lipgloss.NewStyle().
+						Foreground(lipgloss.Color("8")).
+						Render(fmt.Sprintf(" (%d)", len(v.Meanings)))
+					termText += countBadge
+				}
 			}
 		}
 
@@ -393,62 +427,76 @@ func (m *listModel) renderWordList(width, height int) string {
 				Foreground(lipgloss.Color("15")).
 				Padding(0, 1).
 				Width(width - 2)
-			wordText = selectedStyle.Render("▶ " + wordText)
+			termText = selectedStyle.Render("▶ " + termText)
 		} else {
 			normalStyle := lipgloss.NewStyle().
 				Padding(0, 1).
 				Width(width - 2)
-			wordText = normalStyle.Render("  " + wordText)
+			termText = normalStyle.Render("  " + termText)
 		}
 
-		lines = append(lines, wordText)
+		lines = append(lines, termText)
 	}
 
 	return lipgloss.NewStyle().Width(width).Height(height).Render(strings.Join(lines, "\n"))
 }
 
-func (m *listModel) renderWordDetails(width, height int) string {
+func (m *listModel) renderVocabDetails(width, height int) string {
 	var lines []string
 
-	if m.selectedIdx < 0 || m.selectedIdx >= len(m.filteredWords) {
-		lines = append(lines, "No word selected")
+	if m.selectedIdx < 0 || m.selectedIdx >= len(m.filteredVocabs) {
+		lines = append(lines, "No term selected")
 		return lipgloss.NewStyle().Width(width).Height(height).Render(strings.Join(lines, "\n"))
 	}
 
-	word := m.filteredWords[m.selectedIdx]
+	v := m.filteredVocabs[m.selectedIdx]
 
-	// Word
-	wordStyle := lipgloss.NewStyle().
+	// Term
+	termStyle := lipgloss.NewStyle().
 		Bold(true).
 		Foreground(lipgloss.Color("205")).
 		Padding(0, 1)
-	lines = append(lines, wordStyle.Render(word.Word))
+	lines = append(lines, termStyle.Render(v.Term))
 	repeatCount := width
 	if repeatCount < 0 {
 		repeatCount = 0
 	}
 	lines = append(lines, strings.Repeat("─", repeatCount))
 
-	// Meaning
-	lines = append(lines, "")
-	meaningLabel := lipgloss.NewStyle().Bold(true).Render("Meaning:")
-	lines = append(lines, meaningLabel)
-	meaningStyle := lipgloss.NewStyle().Padding(0, 2).Width(width - 4)
-	lines = append(lines, meaningStyle.Render(word.Meaning))
+	// Meanings
+	for idx, meaning := range v.Meanings {
+		if idx > 0 {
+			lines = append(lines, "")
+			lines = append(lines, strings.Repeat("─", repeatCount))
+		}
 
-	// Examples
-	if len(word.Examples) > 0 {
-		lines = append(lines, "")
-		examplesLabel := lipgloss.NewStyle().Bold(true).Render("Examples:")
-		lines = append(lines, examplesLabel)
-		for i, ex := range word.Examples {
-			exStyle := lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.Color("8")).Width(width - 4)
-			lines = append(lines, exStyle.Render(fmt.Sprintf("%d. %s", i+1, ex)))
+		// Meaning header with type
+		meaningHeader := fmt.Sprintf("[%s] %s", meaning.Type, meaning.Definition)
+		if meaning.Context != "" {
+			contextBadge := lipgloss.NewStyle().
+				Foreground(lipgloss.Color("6")).
+				Background(lipgloss.Color("0")).
+				Padding(0, 1).
+				Render(meaning.Context)
+			meaningHeader += " " + contextBadge
+		}
+		meaningHeaderStyle := lipgloss.NewStyle().Bold(true).Padding(0, 1)
+		lines = append(lines, meaningHeaderStyle.Render(meaningHeader))
+
+		// Examples for this meaning
+		if len(meaning.Examples) > 0 {
+			lines = append(lines, "")
+			examplesLabel := lipgloss.NewStyle().Bold(true).Render("Examples:")
+			lines = append(lines, examplesLabel)
+			for i, ex := range meaning.Examples {
+				exStyle := lipgloss.NewStyle().Padding(0, 2).Foreground(lipgloss.Color("8")).Width(width - 4)
+				lines = append(lines, exStyle.Render(fmt.Sprintf("%d. %s", i+1, ex)))
+			}
 		}
 	}
 
 	// Tags
-	if len(word.Tags) > 0 {
+	if len(v.Tags) > 0 {
 		lines = append(lines, "")
 		tagsLabel := lipgloss.NewStyle().Bold(true).Render("Tags:")
 		lines = append(lines, tagsLabel)
@@ -458,7 +506,7 @@ func (m *listModel) renderWordDetails(width, height int) string {
 			Padding(0, 1).
 			Margin(0, 1)
 		tags := []string{}
-		for _, tag := range word.Tags {
+		for _, tag := range v.Tags {
 			tags = append(tags, tagStyle.Render(tag))
 		}
 		lines = append(lines, strings.Join(tags, " "))
@@ -467,7 +515,7 @@ func (m *listModel) renderWordDetails(width, height int) string {
 	// Created at
 	lines = append(lines, "")
 	dateStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("8")).Padding(0, 1)
-	lines = append(lines, dateStyle.Render("Added: "+word.CreatedAt.Format("2006-01-02")))
+	lines = append(lines, dateStyle.Render("Added: "+v.CreatedAt.Format("2006-01-02")))
 
 	return lipgloss.NewStyle().Width(width).Height(height).Render(strings.Join(lines, "\n"))
 }
@@ -484,9 +532,9 @@ func (m *listModel) renderDeleteConfirm() string {
 
 	var content string
 	if m.hasValidSelection() {
-		content = "Delete word: " + m.filteredWords[m.selectedIdx].Word + "?\n\n"
+		content = "Delete term: " + m.filteredVocabs[m.selectedIdx].Term + "?\n\n"
 	} else {
-		content = "Delete word: (invalid selection)?\n\n"
+		content = "Delete term: (invalid selection)?\n\n"
 	}
 	content += "Press 'y' to confirm, 'n' to cancel"
 

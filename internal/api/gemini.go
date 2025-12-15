@@ -2,12 +2,14 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"github.com/google/generative-ai-go/genai"
 	"github.com/trankhanh040147/langtut/internal/constants"
+	"github.com/trankhanh040147/langtut/internal/vocab"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
 )
@@ -112,7 +114,91 @@ func (c *Client) Chat(ctx context.Context, prompt string) (string, error) {
 	return result, nil
 }
 
+// GenerateMeaningInfo generates structured meaning information for a term
+func (c *Client) GenerateMeaningInfo(ctx context.Context, term, context, language string) (vocab.Meaning, error) {
+	var meaning vocab.Meaning
+
+	prompt := fmt.Sprintf(`Generate meaning information for the term "%s" in %s.`, term, language)
+	if context != "" {
+		prompt += fmt.Sprintf(` Context: %s.`, context)
+	}
+	prompt += fmt.Sprintf(`
+
+Return the response as a valid JSON object with this exact structure:
+{
+  "type": "verb|noun|adjective|adverb|idiom|phrasal_verb|collocation",
+  "definition": "clear and concise definition",
+  "context": "%s",
+  "examples": ["example sentence 1", "example sentence 2", "example sentence 3"]
+}
+
+The type must be one of: verb, noun, adjective, adverb, idiom, phrasal_verb, collocation.
+The definition should be clear and concise.
+Examples should be practical and demonstrate common usage.
+Return ONLY the JSON object, no markdown formatting or additional text.`, context)
+
+	response, err := c.Chat(ctx, prompt)
+	if err != nil {
+		return meaning, fmt.Errorf("failed to generate meaning info: %w", err)
+	}
+
+	// Try to parse JSON response
+	response = strings.TrimSpace(response)
+	// Remove markdown code blocks if present
+	if strings.HasPrefix(response, "```json") {
+		response = strings.TrimPrefix(response, "```json")
+		response = strings.TrimSuffix(response, "```")
+		response = strings.TrimSpace(response)
+	} else if strings.HasPrefix(response, "```") {
+		response = strings.TrimPrefix(response, "```")
+		response = strings.TrimSuffix(response, "```")
+		response = strings.TrimSpace(response)
+	}
+
+	var result struct {
+		Type       string   `json:"type"`
+		Definition string   `json:"definition"`
+		Context    string   `json:"context"`
+		Examples   []string `json:"examples"`
+	}
+
+	if err := json.Unmarshal([]byte(response), &result); err != nil {
+		// Fallback to old parsing logic if JSON parse fails
+		definition, examples := parseWordInfoResponse(response)
+		meaning.Type = vocab.TypeNoun // Default type
+		meaning.Definition = definition
+		meaning.Context = context
+		meaning.Examples = examples
+		return meaning, nil
+	}
+
+	// Validate type against constants
+	validTypes := vocab.GetPOSTypes()
+	typeValid := false
+	for _, validType := range validTypes {
+		if result.Type == validType {
+			typeValid = true
+			break
+		}
+	}
+	if !typeValid {
+		result.Type = vocab.TypeNoun // Default to noun if invalid
+	}
+
+	meaning.Type = result.Type
+	meaning.Definition = result.Definition
+	meaning.Context = result.Context
+	if len(result.Examples) == 0 {
+		meaning.Examples = []string{"No examples generated"}
+	} else {
+		meaning.Examples = result.Examples
+	}
+
+	return meaning, nil
+}
+
 // GenerateWordInfo generates meaning and examples for a word
+// Deprecated: Use GenerateMeaningInfo instead
 func (c *Client) GenerateWordInfo(ctx context.Context, word, language string) (string, []string, error) {
 	prompt := fmt.Sprintf(`Generate meaning and 3 example sentences for the word "%s" in %s.
 

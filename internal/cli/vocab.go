@@ -111,22 +111,28 @@ func runVocabAdd(words []string) error {
 	}
 
 	// Process each word
-	for i, word := range words {
+	for i, term := range words {
 		// Reload library at start of each iteration to ensure fresh state
 		lib, err = vocab.Load()
 		if err != nil {
 			return fmt.Errorf("failed to reload library: %w", err)
 		}
 
-		// Check if word already exists
-		if _, exists := lib.GetWord(word); exists {
-			fmt.Fprintf(os.Stderr, "Word '%s' already exists, skipping...\n", word)
-			continue
+		// Check if term already exists
+		if existingVocab, exists := lib.GetVocab(term); exists {
+			// Prompt user to append meaning
+			fmt.Fprintf(os.Stderr, "Term '%s' already exists with %d meaning(s). Append new meaning? (y/n): ", term, len(existingVocab.Meanings))
+			var response string
+			fmt.Scanln(&response)
+			if response != "y" && response != "Y" {
+				fmt.Fprintf(os.Stderr, "Skipping '%s'...\n", term)
+				continue
+			}
 		}
 
-		// Create add model with word set (will auto-generate in Init)
-		// Each word gets a fresh model instance with current library state
-		addModel := vocabui.NewAddModel(word, "", []string{}, lib)
+		// Create add model with term set (will auto-generate in Init)
+		// Each term gets a fresh model instance with current library state
+		addModel := vocabui.NewAddModel(term, "", []string{}, lib)
 		addModel.SetAPIClient(apiClient)
 		addModel.SetLanguage(language)
 
@@ -134,14 +140,14 @@ func runVocabAdd(words []string) error {
 		// p.Run() blocks until modal is closed, ensuring sequential display
 		p := tea.NewProgram(addModel, tea.WithAltScreen())
 		if _, err := p.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error in TUI for '%s': %v\n", word, err)
+			fmt.Fprintf(os.Stderr, "Error in TUI for '%s': %v\n", term, err)
 			continue
 		}
 
 		if addModel.Saved() {
-			fmt.Fprintf(os.Stderr, "Added '%s' (%d/%d)\n", word, i+1, len(words))
+			fmt.Fprintf(os.Stderr, "Added '%s' (%d/%d)\n", term, i+1, len(words))
 		} else {
-			fmt.Fprintf(os.Stderr, "Cancelled adding '%s'\n", word)
+			fmt.Fprintf(os.Stderr, "Cancelled adding '%s'\n", term)
 		}
 	}
 
