@@ -44,9 +44,7 @@ func (m *batchAddModel) startNextWord() tea.Cmd {
 	}
 
 	term := m.words[m.currentIdx]
-	m.addModel = NewAddModel(term, "", []string{}, m.library)
-	m.addModel.SetAPIClient(m.apiClient)
-	m.addModel.SetLanguage(m.language)
+	m.addModel = NewAddModelWithConfig(term, m.library, m.apiClient, m.language)
 	return m.addModel.Init()
 }
 
@@ -112,4 +110,3 @@ func (m *batchAddModel) Done() bool {
 func (m *batchAddModel) Library() *vocab.Library {
 	return m.library
 }
-

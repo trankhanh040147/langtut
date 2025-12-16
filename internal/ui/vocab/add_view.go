@@ -82,6 +82,21 @@ func (m *addModel) View() string {
 			lines = append(lines, termStyle.Render(termLabel+" "+termValue))
 		}
 
+		// Context field
+		contextLabel := "Context:"
+		if m.currentField == fieldContext {
+			contextLabel = "▶ Context:"
+		}
+		if m.editingField == fieldContext {
+			lines = append(lines, contextLabel+" "+m.editBuffer+"█")
+		} else {
+			contextValue := m.context
+			if contextValue == "" {
+				contextValue = "(optional - tag or sentence)"
+			}
+			lines = append(lines, contextLabel+" "+contextValue)
+		}
+
 		// Type field
 		typeLabel := "Type:"
 		if m.currentField == fieldType {
@@ -107,21 +122,6 @@ func (m *addModel) View() string {
 				typeValue = "(enter type)"
 			}
 			lines = append(lines, typeLabel+" "+typeValue)
-		}
-
-		// Context field
-		contextLabel := "Context:"
-		if m.currentField == fieldContext {
-			contextLabel = "▶ Context:"
-		}
-		if m.editingField == fieldContext {
-			lines = append(lines, contextLabel+" "+m.editBuffer+"█")
-		} else {
-			contextValue := m.context
-			if contextValue == "" {
-				contextValue = "(enter context - tag or sentence)"
-			}
-			lines = append(lines, contextLabel+" "+contextValue)
 		}
 
 		// Definition field

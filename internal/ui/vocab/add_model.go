@@ -12,8 +12,8 @@ import (
 
 const (
 	fieldTerm = iota
-	fieldType
 	fieldContext
+	fieldType
 	fieldDefinition
 	fieldExample1
 	fieldExample2
@@ -122,7 +122,7 @@ func (m *addModel) Library() *vocab.Library {
 }
 
 func (m *addModel) Init() tea.Cmd {
-	// Check for duplicate term
+	// Check for duplicate term if term is pre-filled (CLI mode)
 	if m.term != "" && !m.isEditMode {
 		if existingVocab, exists := m.library.GetVocab(m.term); exists {
 			m.isAppendMode = true
@@ -131,12 +131,8 @@ func (m *addModel) Init() tea.Cmd {
 		}
 	}
 
-	// Auto-generate for new meanings
-	if m.term != "" && m.definition == "" && m.apiClient != nil && !m.isEditMode {
-		m.isGenerating = true
-		return m.generateMeaningInfo()
-	}
-
+	// Don't auto-generate here - wait for user to save Term field
+	// Generation will be triggered in saveAndAdvance() when Term is saved
 	return nil
 }
 
@@ -256,9 +252,15 @@ func (m *addModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		if key.Matches(msg, m.keys.Tab) {
 			// Navigate to next field when not editing
+			// If navigating away from Context field, trigger generation if Term is filled
+			wasOnContext := m.currentField == fieldContext
 			m.currentField++
 			if m.currentField >= fieldCount {
 				m.currentField = fieldTerm
+			}
+			// Trigger generation when navigating past Context if Term is filled
+			if wasOnContext {
+				return m, m.triggerGenerationIfReady()
 			}
 			return m, nil
 		}

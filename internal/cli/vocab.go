@@ -1,10 +1,7 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
-	"os"
-	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -112,36 +109,9 @@ func runVocabAdd(words []string) error {
 		language = "English"
 	}
 
-	// Create reader once before loop
-	reader := bufio.NewReader(os.Stdin)
-
-	// Filter words that user wants to add
-	wordsToAdd := []string{}
-	for _, term := range words {
-		// Check if term already exists
-		if existingVocab, exists := lib.GetVocab(term); exists {
-			// Prompt user to append meaning
-			fmt.Fprintf(os.Stderr, "Term '%s' already exists with %d meaning(s). Append new meaning? (y/n): ", term, len(existingVocab.Meanings))
-			response, err := reader.ReadString('\n')
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
-				continue
-			}
-			response = strings.TrimSpace(strings.ToLower(response))
-			if response != "y" && response != "yes" {
-				fmt.Fprintf(os.Stderr, "Skipping '%s'...\n", term)
-				continue
-			}
-		}
-		wordsToAdd = append(wordsToAdd, term)
-	}
-
-	if len(wordsToAdd) == 0 {
-		return nil
-	}
-
-	// Create batch add model that manages queue of words
-	batchModel := vocabui.NewBatchAddModel(wordsToAdd, lib, apiClient, language)
+	// Pass all words directly to batch model
+	// TUI will handle duplicate detection and append mode
+	batchModel := vocabui.NewBatchAddModel(words, lib, apiClient, language)
 	p := tea.NewProgram(batchModel, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("failed to run TUI: %w", err)

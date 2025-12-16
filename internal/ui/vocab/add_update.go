@@ -14,10 +14,10 @@ func (m *addModel) loadCurrentFieldToBuffer() {
 	switch m.currentField {
 	case fieldTerm:
 		m.editBuffer = m.term
-	case fieldType:
-		m.editBuffer = m.meaningType
 	case fieldContext:
 		m.editBuffer = m.context
+	case fieldType:
+		m.editBuffer = m.meaningType
 	case fieldDefinition:
 		m.editBuffer = m.definition
 	case fieldExample1:
@@ -58,10 +58,10 @@ func (m *addModel) saveCurrentField() {
 	switch m.editingField {
 	case fieldTerm:
 		m.term = m.editBuffer
-	case fieldType:
-		m.meaningType = m.editBuffer
 	case fieldContext:
 		m.context = m.editBuffer
+	case fieldType:
+		m.meaningType = m.editBuffer
 	case fieldDefinition:
 		m.definition = m.editBuffer
 	case fieldExample1:
@@ -75,15 +75,33 @@ func (m *addModel) saveCurrentField() {
 	}
 }
 
-func (m *addModel) saveAndAdvance() {
+func (m *addModel) saveAndAdvance() tea.Cmd {
+	wasTermField := m.editingField == fieldTerm
+	wasContextField := m.editingField == fieldContext
+
 	m.saveCurrentField()
 	m.editingField = -1
 	m.editBuffer = ""
 	m.showSuggestions = false
+
+	// Check for duplicate term after saving Term field
+	if wasTermField {
+		m.checkDuplicateTerm()
+	}
+
+	// Trigger generation after Context field is saved (or skipped)
+	// This ensures user can optionally fill Context before generation
+	var genCmd tea.Cmd
+	if wasContextField {
+		genCmd = m.triggerGenerationIfReady()
+	}
+
 	m.currentField++
 	if m.currentField >= fieldCount {
 		m.currentField = fieldTerm
 	}
+
+	return genCmd
 }
 
 func (m *addModel) checkDuplicateTerm() {
@@ -101,6 +119,35 @@ func (m *addModel) checkDuplicateTerm() {
 		m.existingVocab = nil
 		m.existingMeanings = []vocab.Meaning{}
 	}
+}
+
+// triggerGenerationIfReady checks if Term is filled and triggers generation
+// Generation happens after Term is saved, optionally including Context if provided
+// Returns a tea.Cmd if generation should be triggered, nil otherwise
+func (m *addModel) triggerGenerationIfReady() tea.Cmd {
+	// Only generate for new meanings (not edit mode)
+	if m.isEditMode {
+		return nil
+	}
+
+	// Only generate if Term is filled and we haven't generated yet
+	if m.term == "" || m.isGenerating {
+		return nil
+	}
+
+	// Only generate if definition is empty (meaning we haven't generated yet)
+	if m.definition != "" {
+		return nil
+	}
+
+	// Only generate if API client is available
+	if m.apiClient == nil {
+		return nil
+	}
+
+	// Trigger generation
+	m.isGenerating = true
+	return m.generateMeaningInfo()
 }
 
 func (m *addModel) updateTypeSuggestions() {
@@ -155,8 +202,7 @@ func (m *addModel) handleAutocompleteNav(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selectedSuggestion = -1
 		}
 		// Save and advance
-		m.saveAndAdvance()
-		return m, nil
+		return m, m.saveAndAdvance()
 	}
 
 	if key.Matches(msg, m.keys.Esc) {
@@ -175,8 +221,7 @@ func (m *addModel) handleAutocompleteNav(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.selectedSuggestion = -1
 		}
 		// Save and advance
-		m.saveAndAdvance()
-		return m, nil
+		return m, m.saveAndAdvance()
 	}
 
 	return nil, nil
@@ -184,15 +229,9 @@ func (m *addModel) handleAutocompleteNav(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 func (m *addModel) handleDefaultEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if key.Matches(msg, m.keys.Enter) {
-		// Check for duplicate term if term field was saved
-		wasTermField := m.editingField == fieldTerm
 		// Save current field and advance to next
-		m.saveAndAdvance()
-		// Check for duplicate after saving term
-		if wasTermField {
-			m.checkDuplicateTerm()
-		}
-		return m, nil
+		// This may trigger generation if Term/Context was saved
+		return m, m.saveAndAdvance()
 	}
 
 	if key.Matches(msg, m.keys.Esc) {
@@ -217,8 +256,8 @@ func (m *addModel) handleDefaultEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if key.Matches(msg, m.keys.Tab) {
 		// Save and move to next
-		m.saveAndAdvance()
-		return m, nil
+		// This may trigger generation if Term/Context was saved
+		return m, m.saveAndAdvance()
 	}
 
 	// Handle character input

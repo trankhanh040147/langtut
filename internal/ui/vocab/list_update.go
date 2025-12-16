@@ -1,8 +1,12 @@
 package vocab
 
 import (
+	"fmt"
+
 	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/trankhanh040147/langtut/internal/api"
+	"github.com/trankhanh040147/langtut/internal/config"
 )
 
 func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -161,24 +165,64 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if key.Matches(msg, m.keys.Add) {
+			// Load config and create API client (same as CLI mode)
+			cfg, err := config.Load()
+			if err != nil {
+				m.err = fmt.Errorf("failed to load config: %w", err)
+				return m, nil
+			}
+
+			if cfg.APIKey == "" {
+				m.err = fmt.Errorf("API key not set. Please configure it first")
+				return m, nil
+			}
+
+			apiClient, err := api.NewClient(cfg.APIKey)
+			if err != nil {
+				m.err = fmt.Errorf("failed to create API client: %w", err)
+				return m, nil
+			}
+
+			language := cfg.TargetLanguage
+			if language == "" {
+				language = "English"
+			}
+
+			// Use shared initialization function
 			m.showAddModal = true
-			m.addModel = NewAddModel("", "", []string{}, m.library)
+			m.addModel = NewAddModelWithConfig("", m.library, apiClient, language)
 			return m, m.addModel.Init()
 		}
 
 		if key.Matches(msg, m.keys.Edit) {
 			if m.hasValidSelection() {
+				// Load config for API client (may be needed for regeneration)
+				cfg, err := config.Load()
+				var apiClient MeaningInfoGenerator
+				if err == nil && cfg.APIKey != "" {
+					if client, err := api.NewClient(cfg.APIKey); err == nil {
+						apiClient = client
+					}
+				}
+
+				language := "English"
+				if cfg != nil && cfg.TargetLanguage != "" {
+					language = cfg.TargetLanguage
+				}
+
 				m.showEditModal = true
 				m.editVocab = m.filteredVocabs[m.selectedIdx]
 				// Edit first meaning by default (can enhance later to select meaning)
 				if len(m.editVocab.Meanings) > 0 {
 					m.editMeaning = &m.editVocab.Meanings[0]
-					m.addModel = NewAddModel(
+					m.addModel = NewAddModelWithConfig(
 						m.editVocab.Term,
-						m.editMeaning.Definition,
-						m.editMeaning.Examples,
 						m.library,
+						apiClient,
+						language,
 					)
+					m.addModel.definition = m.editMeaning.Definition
+					m.addModel.examples = m.editMeaning.Examples
 					m.addModel.meaningType = m.editMeaning.Type
 					m.addModel.context = m.editMeaning.Context
 					m.addModel.originalMeaning = m.editMeaning
@@ -205,4 +249,3 @@ func (m *listModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	return m, nil
 }
-
