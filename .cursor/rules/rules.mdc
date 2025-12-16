@@ -13,19 +13,24 @@ alwaysApply: true
 - **Vim Navigation:** Use `j/k`, `g/G`, `/`. Update `internal/ui/help.go` immediately if shortcuts change.
 - **Input Strategy:** Keyboard-first actions. Minimize typing via AI, defaults, and interactive editing. Prefer TUI/modals over long flags.
 - **Layout:** Center via style width only; **never** calculate string length.
+- **Layout Centering:** Use `lipgloss.Place()` for centering content. Never manually calculate padding with `strings.Repeat`. Never use `strings.Repeat` for layout - use `lipgloss` border styles or width constraints instead.
 - **Keybindings:** Map `Enter`/`Tab` to `save() + nextField()`. Tab must work in both editing and navigation modes. Show help with `?`. Define help text in `constants` (never inline).
+- **Key Handling:** Use `key.Matches(msg, m.keys.Binding)` with keymap structs from `constants.KeyMap`. Never hardcode key strings like `"tab"`, `"backspace"`, `"e"`, `"y"`, `"n"`. All key comparisons MUST use `key.Matches()`. Legacy string constants and `msg.String()` comparisons are forbidden.
 - **CRUD Logic:** `isEditMode` relies strictly on ID persistence (non-nil), not content.
 
 ### 2. Core Go Implementation
 - **Structure:** Go 1.25+. Keep files/modules small. Constants in `[...constants.go]` (no hardcoding).
 - **File Size:** Manage code files into small parts to reduce token costs. Split large files, keep functions focused, prefer smaller modules
-- **Input Safety:** Single `bufio.NewReader(os.Stdin)` per function (never multiple). Trim input strings.
+- **Input Safety:** Single `bufio.NewReader(os.Stdin)` per function (never multiple). Trim input strings. Never use `fmt.Scanln` for user input; use `bufio.NewReader(os.Stdin).ReadString('\n')` and trim.
 - **Concurrency:** Use `errgroup.Group` (not `sync.WaitGroup`). Propagate errors. Handle context cancellation.
 - **Memory:** **Never** take address of map index (`&m[k]`). Assign to var first.
 * **Index Safety:** Verify bounds (`0 ≤ idx < len`) before access; explicitly handle empty slices (reset index to -1 or skip).
 * **Safe Mutation:** Cache original IDs/Keys **before** editing; execute deletions against the cached values, never against modified properties.
 - **Flow:** Use `Cobra.RunE`. Return errors to `main`. **No** `os.Exit` in library code. Listen for `os.Interrupt`.
 - **Timeouts:** Mandatory default timeouts for all Network/IO.
+- **TUI I/O:** All file I/O in TUI Update functions must be wrapped in `tea.Cmd` to prevent blocking the event loop.
+- **JSON Library:** Use `github.com/bytedance/sonic` for all JSON operations (performance). Never use `encoding/json` for marshal/unmarshal.
+- **Slice Allocation:** Pre-allocate slice capacity when size is known: `make([]T, 0, len(source))` instead of `[]T{}`.
 
 ### 3. System & Configuration
 - **Config:** YAML in `~/.config/langtut/config.yaml` (use `os.MkdirAll`). Set defaults.
@@ -41,8 +46,9 @@ alwaysApply: true
 - **Width Safety:** Guard `strings.Repeat` with `max(0, count)`. Guard width calculations to prevent negative values. Default to minimum width (80) if `Width() == 0` before first `WindowSizeMsg`.
     
 ### 4. Quality & Maintenance
+- **[CRITICAL] DRY Enforcement:** Flag **any** repeated code patterns (data manipulation, error handling sequences, or TUI styling) appearing >2 times. These MUST be extracted into helper functions to reduce verbosity.
 - **Standards:** Target A+ Report Card. Complexity ≤15. Run `gofmt -s`, `vet`, `staticcheck`, `misspell`.
-- **Errors:** Wrap all errors: `fmt.Errorf("ctx: %w", err)`.
+- **Errors:** Wrap all errors: `fmt.Errorf("ctx: %w", err)`. Log errors before fallback handlers to make issues visible during development.
 - **Deps:** Pin majors. Update periodically (`go get -u`). Run `govulncheck`.
 
 ## Bug Fix Protocol

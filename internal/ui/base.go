@@ -3,6 +3,7 @@ package ui
 import (
 	"os"
 
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/trankhanh040147/langtut/internal/constants"
 )
@@ -12,6 +13,7 @@ type BaseModel struct {
 	showHelp bool
 	height   int
 	width    int
+	keys     constants.KeyMap
 }
 
 // Init initializes the base model
@@ -27,11 +29,16 @@ func (m *BaseModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		return m, nil
 	case tea.KeyMsg:
-		switch msg.String() {
-		case constants.KeyHelp:
+		// Initialize keys on first use (BaseModel keys are lazily initialized)
+		// Check if keys are uninitialized by testing if Help binding matches nothing
+		if len(m.keys.Help.Keys()) == 0 {
+			m.keys = constants.DefaultKeyMap()
+		}
+		if key.Matches(msg, m.keys.Help) {
 			m.showHelp = !m.showHelp
 			return m, nil
-		case constants.KeyCtrlC, constants.KeyQuit:
+		}
+		if key.Matches(msg, m.keys.CtrlC) || key.Matches(msg, m.keys.Quit) {
 			return m, tea.Quit
 		}
 	}

@@ -2,16 +2,24 @@ package api
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"os"
 	"regexp"
 	"strings"
 
+	"github.com/bytedance/sonic"
 	"github.com/google/generative-ai-go/genai"
 	"github.com/trankhanh040147/langtut/internal/constants"
 	"github.com/trankhanh040147/langtut/internal/vocab"
 	"google.golang.org/api/iterator"
 	"google.golang.org/api/option"
+)
+
+var (
+	// jsonBlockRegex matches markdown code blocks (```json ... ``` or ``` ... ```)
+	jsonBlockRegex = regexp.MustCompile(`(?s)^\s*` + "```" + `(?:json)?\s*(.*?)\s*` + "```" + `\s*$`)
+	// exampleListRegex matches numbered list items or bullet points
+	exampleListRegex = regexp.MustCompile(`^\d+\.\s*(.+)$|^[-*]\s*(.+)$`)
 )
 
 // Client wraps the Gemini API client
@@ -144,15 +152,10 @@ Return ONLY the JSON object, no markdown formatting or additional text.`, contex
 
 	// Try to parse JSON response
 	response = strings.TrimSpace(response)
-	// Remove markdown code blocks if present
-	if strings.HasPrefix(response, "```json") {
-		response = strings.TrimPrefix(response, "```json")
-		response = strings.TrimSuffix(response, "```")
-		response = strings.TrimSpace(response)
-	} else if strings.HasPrefix(response, "```") {
-		response = strings.TrimPrefix(response, "```")
-		response = strings.TrimSuffix(response, "```")
-		response = strings.TrimSpace(response)
+	// Remove markdown code blocks if present using regex
+	// Matches: ```json ... ``` or ``` ... ``` with optional whitespace
+	if matches := jsonBlockRegex.FindStringSubmatch(response); len(matches) > 1 {
+		response = strings.TrimSpace(matches[1])
 	}
 
 	var result struct {
@@ -162,7 +165,9 @@ Return ONLY the JSON object, no markdown formatting or additional text.`, contex
 		Examples   []string `json:"examples"`
 	}
 
-	if err := json.Unmarshal([]byte(response), &result); err != nil {
+	if err := sonic.Unmarshal([]byte(response), &result); err != nil {
+		// Log error before falling back to legacy parser
+		fmt.Fprintf(os.Stderr, "level=warn msg=\"failed to parse API JSON response\" err=\"%v\"\n", err)
 		// Fallback to old parsing logic if JSON parse fails
 		definition, examples := parseWordInfoResponse(response)
 		meaning.Type = vocab.TypeNoun // Default type
@@ -260,8 +265,7 @@ func parseWordInfoResponse(response string) (string, []string) {
 		// Collect examples
 		if inExamplesSection {
 			// Match numbered list items: "1. example" or "- example" or "* example"
-			re := regexp.MustCompile(`^\d+\.\s*(.+)$|^[-*]\s*(.+)$`)
-			matches := re.FindStringSubmatch(line)
+			matches := exampleListRegex.FindStringSubmatch(line)
 			if len(matches) > 0 {
 				example := matches[1]
 				if example == "" && len(matches) > 2 {
@@ -291,8 +295,7 @@ func parseWordInfoResponse(response string) (string, []string) {
 				for j := idx + 1; j < len(lines) && j < idx+5; j++ {
 					exLine := strings.TrimSpace(lines[j])
 					if exLine != "" && !strings.HasPrefix(exLine, "#") {
-						re := regexp.MustCompile(`^\d+\.\s*(.+)$|^[-*]\s*(.+)$`)
-						matches := re.FindStringSubmatch(exLine)
+						matches := exampleListRegex.FindStringSubmatch(exLine)
 						if len(matches) > 0 {
 							example := matches[1]
 							if example == "" && len(matches) > 2 {

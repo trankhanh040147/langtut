@@ -1,25 +1,16 @@
 package vocab
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
 	"time"
 
+	"github.com/bytedance/sonic"
 	"github.com/trankhanh040147/langtut/internal/constants"
 )
-
-// Word is a legacy type kept for backward compatibility during transition
-// Deprecated: Use Vocab instead
-type Word struct {
-	Word      string    `json:"word"`
-	Meaning   string    `json:"meaning"`
-	Language  string    `json:"language"`
-	Examples  []string  `json:"examples"`
-	Tags      []string  `json:"tags"`
-	CreatedAt time.Time `json:"created_at"`
-}
 
 // Metadata contains library metadata
 type Metadata struct {
@@ -63,7 +54,7 @@ func Load() (*Library, error) {
 	}
 
 	// Parse JSON
-	if err := json.Unmarshal(data, lib); err != nil {
+	if err := sonic.Unmarshal(data, lib); err != nil {
 		// Backup corrupted file
 		backupPath := vocabPath + ".corrupted"
 		if writeErr := os.WriteFile(backupPath, data, 0600); writeErr == nil {
@@ -96,18 +87,25 @@ func Save(lib *Library) error {
 	// Update metadata
 	lib.Metadata.LastUpdated = time.Now()
 
-	// Marshal to JSON
-	data, err := json.MarshalIndent(lib, "", "  ")
+	// Marshal to JSON using sonic
+	jsonBytes, err := sonic.Marshal(lib)
 	if err != nil {
 		return fmt.Errorf("failed to marshal vocab library: %w", err)
 	}
+
+	// Format with indentation
+	var buf bytes.Buffer
+	if err := json.Indent(&buf, jsonBytes, "", "  "); err != nil {
+		return fmt.Errorf("failed to indent JSON: %w", err)
+	}
+	data := buf.Bytes()
 
 	// Atomic write: write to temporary file first, then rename
 	tmpPath := vocabPath + ".tmp"
 	if err := os.WriteFile(tmpPath, data, 0600); err != nil {
 		// Clean up temp file if it was partially created
 		if removeErr := os.Remove(tmpPath); removeErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to remove temp file %s: %v\n", tmpPath, removeErr)
+			fmt.Fprintf(os.Stderr, "level=warn msg=\"failed to remove temp file\" file=\"%s\" err=\"%v\"\n", tmpPath, removeErr)
 		}
 		return fmt.Errorf("failed to write vocab file: %w", err)
 	}
@@ -116,7 +114,7 @@ func Save(lib *Library) error {
 	if err := os.Rename(tmpPath, vocabPath); err != nil {
 		// Clean up temp file on rename failure
 		if removeErr := os.Remove(tmpPath); removeErr != nil {
-			fmt.Fprintf(os.Stderr, "warning: failed to remove temp file %s: %v\n", tmpPath, removeErr)
+			fmt.Fprintf(os.Stderr, "level=warn msg=\"failed to remove temp file\" file=\"%s\" err=\"%v\"\n", tmpPath, removeErr)
 		}
 		return fmt.Errorf("failed to rename vocab file: %w", err)
 	}
@@ -181,73 +179,4 @@ func (v *Vocab) GetNextMeaningID() int {
 		}
 	}
 	return maxID + 1
-}
-
-// Backward compatibility aliases
-// Deprecated: Use AddVocab instead
-func (lib *Library) AddWord(word *Word) {
-	// Convert Word to Vocab for backward compatibility
-	v := &Vocab{
-		ID:        NormalizeTerm(word.Word),
-		Term:      word.Word,
-		Language:  word.Language,
-		Tags:      word.Tags,
-		CreatedAt: word.CreatedAt,
-	}
-	if word.Meaning != "" {
-		v.Meanings = []Meaning{
-			{
-				ID:         1,
-				Type:       TypeNoun, // Default type
-				Definition: word.Meaning,
-				Examples:   word.Examples,
-			},
-		}
-	}
-	lib.AddVocab(v)
-}
-
-// Deprecated: Use GetVocab instead
-func (lib *Library) GetWord(word string) (*Word, bool) {
-	v, ok := lib.GetVocab(word)
-	if !ok {
-		return nil, false
-	}
-	// Convert Vocab to Word (use first meaning)
-	w := &Word{
-		Word:      v.Term,
-		Language:  v.Language,
-		Tags:      v.Tags,
-		CreatedAt: v.CreatedAt,
-	}
-	if len(v.Meanings) > 0 {
-		w.Meaning = v.Meanings[0].Definition
-		w.Examples = v.Meanings[0].Examples
-	}
-	return w, true
-}
-
-// Deprecated: Use DeleteVocab instead
-func (lib *Library) DeleteWord(word string) bool {
-	return lib.DeleteVocab(word)
-}
-
-// Deprecated: Use GetAllVocabs instead
-func (lib *Library) GetAllWords() []*Word {
-	vocabs := lib.GetAllVocabs()
-	words := make([]*Word, 0, len(vocabs))
-	for _, v := range vocabs {
-		w := &Word{
-			Word:      v.Term,
-			Language:  v.Language,
-			Tags:      v.Tags,
-			CreatedAt: v.CreatedAt,
-		}
-		if len(v.Meanings) > 0 {
-			w.Meaning = v.Meanings[0].Definition
-			w.Examples = v.Meanings[0].Examples
-		}
-		words = append(words, w)
-	}
-	return words
 }

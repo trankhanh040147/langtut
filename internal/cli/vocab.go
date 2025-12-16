@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
@@ -110,46 +112,43 @@ func runVocabAdd(words []string) error {
 		language = "English"
 	}
 
-	// Process each word
-	for i, term := range words {
-		// Reload library at start of each iteration to ensure fresh state
-		lib, err = vocab.Load()
-		if err != nil {
-			return fmt.Errorf("failed to reload library: %w", err)
-		}
+	// Create reader once before loop
+	reader := bufio.NewReader(os.Stdin)
 
+	// Filter words that user wants to add
+	wordsToAdd := []string{}
+	for _, term := range words {
 		// Check if term already exists
 		if existingVocab, exists := lib.GetVocab(term); exists {
 			// Prompt user to append meaning
 			fmt.Fprintf(os.Stderr, "Term '%s' already exists with %d meaning(s). Append new meaning? (y/n): ", term, len(existingVocab.Meanings))
-			var response string
-			fmt.Scanln(&response)
-			if response != "y" && response != "Y" {
+			response, err := reader.ReadString('\n')
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error reading input: %v\n", err)
+				continue
+			}
+			response = strings.TrimSpace(strings.ToLower(response))
+			if response != "y" && response != "yes" {
 				fmt.Fprintf(os.Stderr, "Skipping '%s'...\n", term)
 				continue
 			}
 		}
-
-		// Create add model with term set (will auto-generate in Init)
-		// Each term gets a fresh model instance with current library state
-		addModel := vocabui.NewAddModel(term, "", []string{}, lib)
-		addModel.SetAPIClient(apiClient)
-		addModel.SetLanguage(language)
-
-		// Show edit modal (Init will trigger auto-generation)
-		// p.Run() blocks until modal is closed, ensuring sequential display
-		p := tea.NewProgram(addModel, tea.WithAltScreen())
-		if _, err := p.Run(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error in TUI for '%s': %v\n", term, err)
-			continue
-		}
-
-		if addModel.Saved() {
-			fmt.Fprintf(os.Stderr, "Added '%s' (%d/%d)\n", term, i+1, len(words))
-		} else {
-			fmt.Fprintf(os.Stderr, "Cancelled adding '%s'\n", term)
-		}
+		wordsToAdd = append(wordsToAdd, term)
 	}
+
+	if len(wordsToAdd) == 0 {
+		return nil
+	}
+
+	// Create batch add model that manages queue of words
+	batchModel := vocabui.NewBatchAddModel(wordsToAdd, lib, apiClient, language)
+	p := tea.NewProgram(batchModel, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("failed to run TUI: %w", err)
+	}
+
+	// Update library reference from batch model
+	lib = batchModel.Library()
 
 	return nil
 }

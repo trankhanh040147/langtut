@@ -56,7 +56,7 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 ---
 
-# v0.1.2 - Nested meanings
+# v0.1.1 - Nested meanings
 
 **Status:** Planned
 **Focus:** Nested meanings, Part of Speech (POS), context-aware definitions, and the "Rich Add" workflow.
@@ -93,9 +93,10 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 #### Issues
 - [ ] IS01: Wrong "Add Workflow" --> Do not type context
+- [x] IS02: Legacy Type Removal --> Remove `WordInfoGenerator`, `generateWordInfo()`, and `wordInfoGeneratedMsg` from `add_model.go` once API client fully migrates to `MeaningInfoGenerator`
 
 ---
-# v0.1.3 - Word Graph
+# v0.1.2 - Word Graph
 
 **Status:** Planned
 **Focus:** Word relationships, family trees, and navigation.
@@ -392,6 +393,31 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 | **#bug09: List Help**   | Fixed      | `list_model.go`: Esc closes Help overlay before other handlers.        |
 | **#bug10: Index Panic** | Fixed      | `list_model.go`: Added bounds checks; handle empty lists (`idx = -1`). |
 | **#bug11: Add Help**    | Fixed      | `add_model.go`: Esc closes Help overlay before closing modal.          |
+| **#bug12: Blocking I/O** | Fixed      | `add_model.go`, `list_model.go`: Wrapped `vocab.Save()` in `tea.Cmd` for async I/O. |
+| **#bug13: Fragile Input** | Fixed      | `cli/vocab.go`: Replaced `fmt.Scanln` with `bufio.Reader` for robust input handling. |
+| **#bug14: High Complexity** | Fixed      | `add_model.go`: Extracted field editing logic into `handleFieldEditUpdate()` helper. |
+| **#bug15: JSON Sanitization** | Fixed      | `api/gemini.go`: Replaced brittle string manipulation with regex for JSON extraction. |
+| **#bug16: Inefficient File I/O** | Fixed      | `cli/vocab.go`: Removed library reload from loop; update library reference from saved model state. |
+| **#bug17: Swallowed JSON Error** | Fixed      | `api/gemini.go`: Added error logging before fallback to legacy parser. |
+| **#bug18: Imperative Slice Padding** | Fixed      | `add_model.go`: Extracted repeated slice padding logic into `setExample()` helper method. |
+| **#bug19: Monolithic File** | Fixed      | `add_model.go`: Split into `add_model.go`, `add_update.go`, `add_view.go`, `add_cmds.go` (<200 lines each). |
+| **#bug20: Standard JSON** | Fixed      | `vocab.go`, `gemini.go`: Replaced `encoding/json` with `sonic` for performance. |
+| **#bug21: Hardcoded Keys** | Fixed      | `add_model.go`, `list_model.go`: Created `KeyMap` struct, use `key.Matches()` instead of string comparisons. |
+| **#bug22: Manual Layout** | Fixed      | `add_view.go`, `list_model.go`, `help.go`: Replaced manual padding with `lipgloss.Place()`. |
+| **#bug23: Inefficient Slice** | Fixed      | `list_model.go`: Pre-allocate `filteredVocabs` capacity: `make([]*vocab.Vocab, 0, len(m.vocabs))`. |
+| **#bug24: Duplicate Save/Advance** | Fixed      | `add_update.go`: Extracted `saveAndAdvance()` helper to eliminate duplication. |
+| **#bug25: High Complexity** | Fixed      | `add_update.go`: Split `handleFieldEditUpdate` into `handleAutocompleteNav` and `handleDefaultEdit`. |
+| **#bug26: Inefficient Regex** | Fixed      | `api/gemini.go`: Moved `jsonBlockRegex` and `exampleListRegex` to package-level variables. |
+| **#bug27: Inconsistent Keys** | Fixed      | `add_model.go`, `add_update.go`, `list_model.go`: Extended `KeyMap` with `Down`, `Up`, `Enter`, `Esc`, `CtrlS`; replaced all `msg.String()` with `key.Matches()`. |
+| **#bug28: Redundant Reader** | Fixed      | `cli/vocab.go`: Moved `bufio.NewReader(os.Stdin)` before loop. |
+| **#bug29: Legacy Code** | Fixed      | `add_model.go`, `add_cmds.go`: Removed `WordInfoGenerator`, `wordInfoGeneratedMsg`, `generateWordInfo()`, `SetWordInfoClient()` per IS02. |
+| **#bug30: Unstructured Logs** | Fixed      | `api/gemini.go`, `vocab/vocab.go`: Standardized warning logs to structured format `level=warn msg="..." err="..."`. |
+| **#bug31: Inconsistent Key Binding** | Fixed      | `list_model.go`: Replaced `switch msg.String()` block with `key.Matches()` checks. Extended `KeyMap` with all missing bindings. |
+| **#bug32: Inefficient TUI Instantiation** | Fixed      | `cli/vocab.go`: Created `batchAddModel` to manage word queue in single `tea.Program` instead of creating new program per word. |
+| **#bug33: Manual Layout Calculation** | Fixed      | `list_model.go`, `add_view.go`: Replaced `strings.Repeat("─", count)` with `renderHorizontalRule()` helper using `lipgloss` borders. |
+| **#bug34: Monolithic File Structure** | Fixed      | `list_model.go`: Split into `list_model.go` (151 lines), `list_update.go` (210 lines), `list_view.go` (227 lines). |
+| **#bug35: Redundant Key Constants** | Fixed      | `constants/ui.go`: Removed legacy `Key*` string constants. All key handling now uses `KeyMap` struct with `key.Matches()`. |
+| **#bug36: Mixed Key Handling Styles** | Fixed      | `add_model.go`, `base.go`: Replaced remaining `msg.String()` comparisons with `key.Matches()`. Standardized all key handling. |
 
 ---
 > **Reminder**: Contents written in this file need to be condensed. Remove fluff, preserve meaning, maintain clarity for machine processing.

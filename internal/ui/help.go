@@ -53,36 +53,8 @@ func RenderHelp(width, height int) string {
 	helpText = strings.Join(wrapped, "\n")
 	rendered := helpStyle.Render(helpText)
 
-	// Center the help box using style width (60) instead of calculated width
-	renderedLines := strings.Split(rendered, "\n")
-	boxHeight := len(renderedLines)
-	boxWidth := 60 // Use style width directly for consistent centering
-
-	// Calculate padding
-	topPadding := (height - boxHeight) / 2
-	if topPadding < 0 {
-		topPadding = 0
-	}
-	leftPadding := (width - boxWidth) / 2
-	if leftPadding < 0 {
-		leftPadding = 0
-	}
-
-	// Add vertical padding (guard repeat counts)
-	topRepeat := topPadding
-	if topRepeat < 0 {
-		topRepeat = 0
-	}
-	leftRepeat := leftPadding
-	if leftRepeat < 0 {
-		leftRepeat = 0
-	}
-	result := strings.Repeat("\n", topRepeat)
-	for _, line := range renderedLines {
-		result += fmt.Sprintf("%s%s\n", strings.Repeat(" ", leftRepeat), line)
-	}
-
-	return result
+	// Center the help box using lipgloss.Place
+	return lipgloss.Place(width, height, lipgloss.Center, lipgloss.Center, rendered)
 }
 
 // GetKeyBindingDescription returns a formatted key binding description
