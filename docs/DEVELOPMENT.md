@@ -2,7 +2,7 @@
 
 ## Design Principles & Coding Standards
 
-> **Reference:** All design principles, coding standards, and implementation guidelines are defined in [`.cursor/rules/rules.mdc`](../.cursor/rules/rules.mdc).
+> **Reference:** All design principles, coding standards, and implementation guidelines are defined in [`.cursor/rules/rules.mdc`](../.cursor/rules/rules.mdc) and [`AGENTS.md`](../AGENTS.md)
 
 ### How To Apply These Rules
 
@@ -67,7 +67,7 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
     - `Meaning` struct includes:
         - `Type` (String: "verb", "noun", "idiom", "phrasal_verb", etc.).
         - `Definition` (String).
-        - `Context` (String: Tag or Sentence).
+        - `Context` (String: Tag, Sentence, Slang, etc.).
         - `Examples` ([]String: List of usage sentences).
 
 #### 2. Advanced CRUD (TUI)
@@ -353,7 +353,21 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 > Raw ideas for future consideration
 
+**Interactive learning**
+- Interactive learning modes (writing) have hint features that recommend user answer 
+
+**Progress Tracking**
+- Define user's level
+- User practice every day to level up
+- User skip day = level down 
+- Level up --> harder excercises, different curriculums
+- Streak 
+- Achivements, Badges
+
 **Vocabulary**
+- Add field: Destionation language meaning
+- Add a feature `Ask`: interactive with the word by asking AI --> press `i` --> prompt user to ask about the word --> user type --> result
+- User can customize how AI generate vocabs (how many examples, add how to use word, etc.)
 - Common misunderstanding words
 - Multi-meaning words
 - Enhance list:

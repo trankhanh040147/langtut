@@ -35,3 +35,4 @@ func NewAddModelWithConfig(term string, lib *vocab.Library, apiClient MeaningInf
 		keys:               constants.DefaultKeyMap(),
 	}
 }
+
