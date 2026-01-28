@@ -7,7 +7,7 @@ This document describes the current state of the codebase: utilities, services, 
 ## Commands & Subcommands
 
 ### Root Command
-- **Command:** `langtut` (binary name: `langtut`)
+- **Command:** `prepf` (binary name: `langtut`)
 - **Description:** AI assistant for software development
 - **Flags:**
   - `-c, --cwd`: Current working directory
@@ -18,7 +18,7 @@ This document describes the current state of the codebase: utilities, services, 
 
 ### Subcommands
 
-#### `langtut run [prompt...]`
+#### `prepf run [prompt...]`
 - **Purpose:** Run single non-interactive prompt
 - **Flags:**
   - `-q, --quiet`: Hide spinner
@@ -26,43 +26,43 @@ This document describes the current state of the codebase: utilities, services, 
   - `--small-model`: Small model override
 - **Flow:** Reads prompt from args or stdin, executes via LLM, outputs to stdout
 
-#### `langtut login [platform]`
+#### `prepf login [platform]`
 - **Purpose:** Authenticate with platform
 - **Platforms:** `hyper`, `copilot`, `github`, `github-copilot`
 - **Flow:** OAuth device flow, stores tokens in config
 
-#### `langtut dirs [config|data]`
-- **Purpose:** Print directories used by Langtut
+#### `prepf dirs [config|data]`
+- **Purpose:** Print directories used by Prepf
 - **Subcommands:**
-  - `langtut dirs config`: Config directory
-  - `langtut dirs data`: Data directory
+  - `prepf dirs config`: Config directory
+  - `prepf dirs data`: Data directory
 
-#### `langtut projects`
+#### `prepf projects`
 - **Purpose:** List project directories
 - **Flags:**
   - `--json`: Output as JSON
 - **Flow:** Reads from projects registry, displays table or JSON
 
-#### `langtut models`
+#### `prepf models`
 - **Purpose:** Manage LLM models
 
-#### `langtut logs`
+#### `prepf logs`
 - **Purpose:** View logs
 
-#### `langtut schema`
+#### `prepf schema`
 - **Purpose:** Schema operations
 
-#### `langtut stats`
+#### `prepf stats`
 - **Purpose:** Statistics
 
-#### `langtut update-providers`
+#### `prepf update-providers`
 - **Purpose:** Update provider configurations
 
 ## Core Services
 
 ### Database Service (`internal/db`)
 - **Type:** SQLite (modernc.org/sqlite or ncruces/go-sqlite3)
-- **Location:** `{dataDir}/langtut.db`
+- **Location:** `{dataDir}/prepf.db`
 - **Migrations:** Goose-based migrations in `internal/db/migrations/`
 - **Tables:**
   - `sessions`: Session metadata (id, title, message_count, tokens, cost, timestamps)
@@ -278,10 +278,10 @@ This document describes the current state of the codebase: utilities, services, 
 
 ## Application Flow
 
-### Interactive Mode (`langtut` without args)
+### Interactive Mode (`prepf` without args)
 1. **Initialization:**
    - Load config from `~/.config/langtut/config.yaml`
-   - Connect to SQLite DB at `{dataDir}/langtut.db`
+   - Connect to SQLite DB at `{dataDir}/prepf.db`
    - Run migrations if needed
    - Initialize services (Session, Message, History, Permission)
    - Initialize Agent Coordinator
@@ -316,7 +316,7 @@ This document describes the current state of the codebase: utilities, services, 
    - Tool executes
    - Results returned to agent
 
-### Non-Interactive Mode (`langtut run`)
+### Non-Interactive Mode (`prepf run`)
 1. **Setup:** Same as interactive (config, DB, services)
 2. **Execution:**
    - Read prompt from args or stdin
@@ -384,7 +384,7 @@ This document describes the current state of the codebase: utilities, services, 
 ~/.config/langtut/
 ├── config.yaml          # Main configuration
 └── data/
-    ├── langtut.db         # SQLite database
+    ├── prepf.db         # SQLite database
     └── projects/        # Project-specific data
 ```
 

@@ -36,29 +36,65 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 ---
 
-# v0.1.0 - Writing Drill Mode
+# v0.1.1 - Writing Tutor Mode
 
 **Status:** In Planning
 
+**Scope:** Minimal changes - prompt templates only. No database modifications.
+
 **Features:**
 
-- [ ] **Session Flow:** 
-  - AI acts as Examiner (Part 1/2/3 style questions).
-  - User answers in text.
-- [ ] **"The Red Pen" Feedback Engine:** - **Immediate Linting:** Analyzes each response for:
-    - *Lexical Range:* Highlights repeated words (e.g., "good", "nice") and suggests C1 synonyms.
-    - *Grammar:* Detects tense inconsistencies.
-    - *Coherence:* Checks for linking words (However, Therefore, Consequently).
-  - **Band Score Estimator:** Real-time projected score (e.g., "Current Level: 6.5").
-- [ ] **"Stop-and-Fix" Mechanic:** - If a specific sentence contains a critical error, the AI prompts a "Quick Fix" before proceeding to the next question.
-- [ ] **Knowledge Injection (End-of-Session):**
-  - [ ] **Auto-Summarizer:** Generates `session_report_<date>.md` with mistakes vs. corrections.
-  - [ ] **Vocab Harvester:** Parses "Golden Phrases" (native-like expressions suggested by AI) and presents an interactive checklist to `[Add to Library]`.
+- [ ] **Session Flow:**
+  - User creates new session → mode selection dialog → topic input dialog (empty = random) → AI acts as Examiner
+  - User answers in text, receives feedback after each response
+- [ ] **Feedback Engine:**
+  - Immediate markdown feedback analyzing:
+    - *Lexical Range:* Repeated words, C1 synonym suggestions, etc.
+    - *Grammar:* Tense inconsistencies, errors, etc.
+    - *Coherence:* Linking words, flow, etc.
+  - Band score estimate per response (AI rates using rubric dimensions in prompt template)
+- [ ] **Stop-and-Fix:** AI prompts user to fix critical errors using current UI (no modal)
+- [ ] **End-of-Session:**
+  - User types "end session" or presses keymap → AI generates reviews in markdown: mistakes vs. corrections, vocab list (Golden Phrases), etc. in chat
 
-**Notes**
-- One mode = one persona/prompt template
-- User can choose mode in each new session
-- Use existed components to develop the feature. Avoid writing new codes/components as possible
+**Implementation:**
+
+- **Prompt Template:** `internal/agent/templates/writing-tutor.tpl`
+- **Mode Selection:** Dialog list (like sessions/models dialogs)
+- **Topic Input:** Dialog after mode selection (empty = random)
+- **End Session:** Keymap or text command "end session"
+- **Feedback Storage:** Existing `messages` table (markdown in `parts`)
+- **Vocab List:** Assistant message in chat (markdown)
+- **Navigation:** Use current keymaps
+- **No Database Changes:** Deferred to next release
+
+
+**Deferred to Next Release:**
+
+- **Database Schema:**
+  - Add `mode` field to `sessions` table (e.g., "writing_tutor_ielts")
+  - Add `metadata` JSON field to `sessions` for drill-specific data
+  - Create `feedback` table for structured feedback storage (or extend `messages`)
+  - Add `band_score` field to sessions/messages
+  - Create `vocab_phrases` table (or store in session metadata)
+- **Structured Feedback Format:**
+  - Define JSON schema for machine-processable feedback
+  - Sentence-level issue tracking (type, severity, position)
+  - Store structured data vs. markdown-only
+- **Session Metadata Tracking:**
+  - Question type tracking (Part 1/2/3, Task 1/2)
+  - Difficulty progression per session
+  - Time tracking per question
+- **UI Enhancements:**
+  - Interactive vocab harvester: Bubbletea checklist dialog at end of session
+  - Stop-and-Fix modal editor for sentence editing
+  - Diff-style visualization for feedback
+  - Session report file generation (`session_report_<date>.md`)
+- **Rubric Implementation:**
+  - Move rubric dimensions from prompt to structured system
+  - Calibration mechanism (reference essays, human-labeled examples)
+  - Confidence intervals for band scores
+  - Explicit rubric selection (IELTS Task 1/2, TOEFL, custom)
 
 ---
 
