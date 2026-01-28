@@ -41,6 +41,16 @@ type ActionSelectModel struct {
 	ModelType config.SelectedModelType
 }
 
+// ActionSelectMode is a message indicating a session mode has been selected.
+type ActionSelectMode struct {
+	Mode SessionMode
+}
+
+// ActionTopicInput is a message indicating a topic has been entered.
+type ActionTopicInput struct {
+	Topic string
+}
+
 // Messages for commands
 type (
 	ActionNewSession        struct{}

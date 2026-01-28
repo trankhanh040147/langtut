@@ -36,40 +36,55 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 ---
 
-# v0.1.1 - Writing Tutor Mode
+# v0.1.0 - Writing Tutor Mode
 
-**Status:** In Planning
+**Status:** Implemented ✓
 
-**Scope:** Minimal changes - prompt templates only. No database modifications.
+**Scope:** Minimal changes - prompt templates and UI dialogs only. No database modifications.
 
 **Features:**
 
-- [ ] **Session Flow:**
-  - User creates new session → mode selection dialog → topic input dialog (empty = random) → AI acts as Examiner
+- [x] **Session Flow:**
+  - User opens command palette → "Select Mode" → mode selection dialog → topic input dialog (empty = random) → AI acts as Examiner
   - User answers in text, receives feedback after each response
-- [ ] **Feedback Engine:**
+- [x] **Feedback Engine:**
   - Immediate markdown feedback analyzing:
-    - *Lexical Range:* Repeated words, C1 synonym suggestions, etc.
-    - *Grammar:* Tense inconsistencies, errors, etc.
-    - *Coherence:* Linking words, flow, etc.
+    - *Lexical Range:* Repeated words, C1 synonym suggestions
+    - *Grammar:* Tense inconsistencies, errors
+    - *Coherence:* Linking words, flow
   - Band score estimate per response (AI rates using rubric dimensions in prompt template)
-- [ ] **Stop-and-Fix:** AI prompts user to fix critical errors using current UI (no modal)
-- [ ] **End-of-Session:**
-  - User types "end session" or presses keymap → AI generates reviews in markdown: mistakes vs. corrections, vocab list (Golden Phrases), etc. in chat
+- [x] **Stop-and-Fix:** AI prompts user to fix critical errors using current UI (no modal)
+- [x] **End-of-Session:**
+  - User types "end session" → AI generates session summary + Golden Phrases vocab list in markdown
 
-**Implementation:**
+**Implementation Details:**
 
-- **Prompt Template:** `internal/agent/templates/writing-tutor.tpl`
-- **Mode Selection:** Dialog list (like sessions/models dialogs)
-- **Topic Input:** Dialog after mode selection (empty = random)
-- **End Session:** Keymap or text command "end session"
-- **Feedback Storage:** Existing `messages` table (markdown in `parts`)
-- **Vocab List:** Assistant message in chat (markdown)
-- **Navigation:** Use current keymaps
-- **No Database Changes:** Deferred to next release
+| Component | File | Notes |
+|-----------|------|-------|
+| Prompt Template | `internal/agent/templates/writing-tutor.tpl` | IELTS rubric, feedback protocol, end-session vocab |
+| Prompt Function | `internal/agent/prompts.go` | `WritingTutorPrompt(topic string)` |
+| Mode Dialog | `internal/ui/dialog/modes.go` | Writing Tutor / Coder selection |
+| Topic Dialog | `internal/ui/dialog/topic_input.go` | Text input, empty = random topic |
+| Actions | `internal/ui/dialog/actions.go` | `ActionSelectMode`, `ActionTopicInput` |
+| Coordinator | `internal/agent/coordinator.go` | Added `SetSystemPrompt()` to interface |
+| UI Flow | `internal/ui/model/ui.go` | Mode state, dialog handlers, end-session detection |
+| Commands | `internal/ui/dialog/commands.go` | "Select Mode" in command palette |
 
+**User Flow:**
+1. Open command palette (ctrl+k)
+2. Select "Select Mode"
+3. Choose "Writing Tutor"
+4. Enter topic (or leave empty for random)
+5. AI starts session as examiner
+6. Type responses, receive feedback
+7. Type "end session" to get summary + vocab list
 
-**Deferred to Next Release:**
+**Known Limitations:**
+- Mode state stored in UI only (not persisted to database)
+- No keymap for end session (text command only)
+- Coder mode in dialog just clears session (no special behavior)
+
+**Deferred to v0.1.1:**
 
 - **Database Schema:**
   - Add `mode` field to `sessions` table (e.g., "writing_tutor_ielts")
@@ -90,11 +105,15 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
   - Stop-and-Fix modal editor for sentence editing
   - Diff-style visualization for feedback
   - Session report file generation (`session_report_<date>.md`)
+  - End session keymap (ctrl+e or similar)
 - **Rubric Implementation:**
   - Move rubric dimensions from prompt to structured system
   - Calibration mechanism (reference essays, human-labeled examples)
   - Confidence intervals for band scores
   - Explicit rubric selection (IELTS Task 1/2, TOEFL, custom)
+- **Session Persistence:**
+  - Persist mode selection across sessions
+  - Resume writing tutor sessions with context
 
 ---
 

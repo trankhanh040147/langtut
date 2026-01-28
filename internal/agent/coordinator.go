@@ -56,6 +56,7 @@ type Coordinator interface {
 	Summarize(context.Context, string) error
 	Model() Model
 	UpdateModels(ctx context.Context) error
+	SetSystemPrompt(systemPrompt string)
 }
 
 type coordinator struct {
@@ -837,6 +838,10 @@ func (c *coordinator) Summarize(ctx context.Context, sessionID string) error {
 		return errors.New("model provider not configured")
 	}
 	return c.currentAgent.Summarize(ctx, sessionID, getProviderOptions(c.currentAgent.Model(), providerCfg))
+}
+
+func (c *coordinator) SetSystemPrompt(systemPrompt string) {
+	c.currentAgent.SetSystemPrompt(systemPrompt)
 }
 
 func (c *coordinator) isUnauthorized(err error) bool {

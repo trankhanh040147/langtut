@@ -27,6 +27,8 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/ultraviolet/screen"
 	"github.com/charmbracelet/x/editor"
+	"github.com/trankhanh040147/langtut/internal/agent"
+	"github.com/trankhanh040147/langtut/internal/agent/prompt"
 	"github.com/trankhanh040147/langtut/internal/agent/tools/mcp"
 	"github.com/trankhanh040147/langtut/internal/app"
 	"github.com/trankhanh040147/langtut/internal/commands"
@@ -211,6 +213,10 @@ type UI struct {
 
 	// mouse highlighting related state
 	lastClickTime time.Time
+
+	// Session mode state (for writing tutor mode).
+	sessionMode       dialog.SessionMode
+	writingTutorTopic string
 }
 
 // New creates a new instance of the [UI] model.
@@ -1090,6 +1096,9 @@ func (m *UI) handleDialogMsg(msg tea.Msg) tea.Cmd {
 		}
 		m.newSession()
 		m.dialog.CloseDialog(dialog.CommandsID)
+		if cmd := m.openModesDialog(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
 	case dialog.ActionSummarize:
 		if m.isAgentBusy() {
 			cmds = append(cmds, uiutil.ReportWarn("Agent is busy, please wait before summarizing session..."))
@@ -1250,6 +1259,25 @@ func (m *UI) handleDialogMsg(msg tea.Msg) tea.Cmd {
 			return uiutil.NewInfoMsg("Reasoning effort set to " + msg.Effort)
 		})
 		m.dialog.CloseDialog(dialog.ReasoningID)
+	case dialog.ActionSelectMode:
+		m.dialog.CloseDialog(dialog.ModesID)
+		m.sessionMode = msg.Mode
+		switch msg.Mode {
+		case dialog.SessionModeWritingTutor:
+			if cmd := m.openTopicInputDialog(); cmd != nil {
+				cmds = append(cmds, cmd)
+			}
+		case dialog.SessionModeCoder:
+			// Coder mode: reset to default coder prompt
+			cmds = append(cmds, m.resetCoderPrompt())
+			if m.hasSession() {
+				m.newSession()
+			}
+		}
+	case dialog.ActionTopicInput:
+		m.dialog.CloseDialog(dialog.TopicInputID)
+		m.writingTutorTopic = msg.Topic
+		cmds = append(cmds, m.startWritingTutorSession())
 	case dialog.ActionPermissionResponse:
 		m.dialog.CloseDialog(dialog.PermissionsID)
 		switch msg.Action {
@@ -2521,6 +2549,10 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 
 	var cmds []tea.Cmd
 	if !m.hasSession() {
+		// If no mode selected, open mode selection dialog first
+		if m.sessionMode == "" {
+			return m.openModesDialog()
+		}
 		newSession, err := m.com.App.Sessions.Create(context.Background(), "New Session")
 		if err != nil {
 			return uiutil.ReportError(err)
@@ -2533,6 +2565,10 @@ func (m *UI) sendMessage(content string, attachments ...message.Attachment) tea.
 			m.session = &newSession
 			cmds = append(cmds, m.loadSession(newSession.ID))
 		}
+	}
+
+	if m.sessionMode == dialog.SessionModeWritingTutor && strings.EqualFold(strings.TrimSpace(content), "end session") {
+		content = "Generate the end-of-session summary including: 1) Session Summary with strengths and areas for improvement, 2) Golden Phrases vocabulary list in markdown table format"
 	}
 
 	// Capture session ID to avoid race with main goroutine updating m.session.
@@ -2620,6 +2656,14 @@ func (m *UI) openDialog(id string) tea.Cmd {
 		}
 	case dialog.QuitID:
 		if cmd := m.openQuitDialog(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case dialog.ModesID:
+		if cmd := m.openModesDialog(); cmd != nil {
+			cmds = append(cmds, cmd)
+		}
+	case dialog.TopicInputID:
+		if cmd := m.openTopicInputDialog(); cmd != nil {
 			cmds = append(cmds, cmd)
 		}
 	default:
@@ -2771,6 +2815,28 @@ func (m *UI) handlePermissionNotification(notification permission.PermissionNoti
 	}
 }
 
+func (m *UI) openModesDialog() tea.Cmd {
+	if m.dialog.ContainsDialog(dialog.ModesID) {
+		m.dialog.BringToFront(dialog.ModesID)
+		return nil
+	}
+
+	modesDialog := dialog.NewModes(m.com)
+	m.dialog.OpenDialog(modesDialog)
+	return nil
+}
+
+func (m *UI) openTopicInputDialog() tea.Cmd {
+	if m.dialog.ContainsDialog(dialog.TopicInputID) {
+		m.dialog.BringToFront(dialog.TopicInputID)
+		return nil
+	}
+
+	topicDialog := dialog.NewTopicInput(m.com)
+	m.dialog.OpenDialog(topicDialog)
+	return nil
+}
+
 // newSession clears the current session state and prepares for a new session.
 // The actual session creation happens when the user sends their first message.
 func (m *UI) newSession() {
@@ -2788,6 +2854,41 @@ func (m *UI) newSession() {
 	m.pillsExpanded = false
 	m.promptQueue = 0
 	m.pillsView = ""
+	m.sessionMode = ""
+	m.writingTutorTopic = ""
+}
+
+func (m *UI) startWritingTutorSession() tea.Cmd {
+	return func() tea.Msg {
+		prompt, err := agent.WritingTutorPrompt(m.writingTutorTopic)
+		if err != nil {
+			return uiutil.ReportError(err)()
+		}
+		m.com.App.AgentCoordinator.SetSystemPrompt(prompt)
+		return sendMessageMsg{Content: "Start the writing session"}
+	}
+}
+
+func (m *UI) resetCoderPrompt() tea.Cmd {
+	return func() tea.Msg {
+		cfg := m.com.Config()
+		if cfg == nil {
+			return nil
+		}
+		// Rebuild coder prompt and set it
+		p, err := agent.CoderPrompt(prompt.WithWorkingDir(cfg.WorkingDir()))
+		if err != nil {
+			return uiutil.ReportError(err)()
+		}
+		ctx := context.Background()
+		model := m.com.App.AgentCoordinator.Model()
+		systemPrompt, err := p.Build(ctx, model.ModelCfg.Provider, model.ModelCfg.Model, *cfg)
+		if err != nil {
+			return uiutil.ReportError(err)()
+		}
+		m.com.App.AgentCoordinator.SetSystemPrompt(systemPrompt)
+		return nil
+	}
 }
 
 // handlePasteMsg handles a paste message.
