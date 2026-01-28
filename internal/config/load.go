@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"maps"
 	"os"
@@ -18,7 +19,6 @@ import (
 
 	"github.com/charmbracelet/catwalk/pkg/catwalk"
 	powernapConfig "github.com/charmbracelet/x/powernap/pkg/config"
-	"github.com/qjebbs/go-jsons"
 	"github.com/trankhanh040147/langtut/internal/agent/hyper"
 	"github.com/trankhanh040147/langtut/internal/csync"
 	"github.com/trankhanh040147/langtut/internal/env"
@@ -28,6 +28,21 @@ import (
 )
 
 const defaultCatwalkURL = "https://catwalk.charm.sh"
+
+// LoadReader config via io.Reader.
+func LoadReader(fd io.Reader) (*Config, error) {
+	data, err := io.ReadAll(fd)
+	if err != nil {
+		return nil, err
+	}
+
+	var config Config
+	err = json.Unmarshal(data, &config)
+	if err != nil {
+		return nil, err
+	}
+	return &config, err
+}
 
 // Load loads the configuration from the default paths.
 func Load(workingDir, dataDir string, debug bool) (*Config, error) {
@@ -89,15 +104,15 @@ func Load(workingDir, dataDir string, debug bool) (*Config, error) {
 	return cfg, nil
 }
 
-func PushPopLangtutEnv() func() {
+func PushPopCrushEnv() func() {
 	found := []string{}
 	for _, ev := range os.Environ() {
-		if strings.HasPrefix(ev, "PREPF_") {
+		if strings.HasPrefix(ev, "CRUSH_") {
 			pair := strings.SplitN(ev, "=", 2)
 			if len(pair) != 2 {
 				continue
 			}
-			found = append(found, strings.TrimPrefix(pair[0], "PREPF_"))
+			found = append(found, strings.TrimPrefix(pair[0], "CRUSH_"))
 		}
 	}
 	backups := make(map[string]string)
@@ -106,7 +121,7 @@ func PushPopLangtutEnv() func() {
 	}
 
 	for _, ev := range found {
-		os.Setenv(ev, os.Getenv("PREPF_"+ev))
+		os.Setenv(ev, os.Getenv("CRUSH_"+ev))
 	}
 
 	restore := func() {
@@ -119,16 +134,8 @@ func PushPopLangtutEnv() func() {
 
 func (c *Config) configureProviders(env env.Env, resolver VariableResolver, knownProviders []catwalk.Provider) error {
 	knownProviderNames := make(map[string]bool)
-	restore := PushPopLangtutEnv()
+	restore := PushPopCrushEnv()
 	defer restore()
-
-	// When disable_default_providers is enabled, skip all default/embedded
-	// providers entirely. Users must fully specify any providers they want.
-	// We skip to the custom provider validation loop which handles all
-	// user-configured providers uniformly.
-	if c.Options.DisableDefaultProviders {
-		knownProviders = nil
-	}
 
 	for _, p := range knownProviders {
 		knownProviderNames[string(p.ID)] = true
@@ -176,14 +183,6 @@ func (c *Config) configureProviders(env env.Env, resolver VariableResolver, know
 		}
 		if len(config.ExtraHeaders) > 0 {
 			maps.Copy(headers, config.ExtraHeaders)
-		}
-		for k, v := range headers {
-			resolved, err := resolver.ResolveValue(v)
-			if err != nil {
-				slog.Error("Could not resolve provider header", "err", err.Error())
-				continue
-			}
-			headers[k] = resolved
 		}
 		prepared := ProviderConfig{
 			ID:                 string(p.ID),
@@ -315,15 +314,6 @@ func (c *Config) configureProviders(env env.Env, resolver VariableResolver, know
 			continue
 		}
 
-		for k, v := range providerConfig.ExtraHeaders {
-			resolved, err := resolver.ResolveValue(v)
-			if err != nil {
-				slog.Error("Could not resolve provider header", "err", err.Error())
-				continue
-			}
-			providerConfig.ExtraHeaders[k] = resolved
-		}
-
 		c.Providers.Set(id, providerConfig)
 	}
 	return nil
@@ -383,12 +373,8 @@ func (c *Config) setDefaults(workingDir, dataDir string) {
 		}
 	}
 
-	if str, ok := os.LookupEnv("PREPF_DISABLE_PROVIDER_AUTO_UPDATE"); ok {
+	if str, ok := os.LookupEnv("CRUSH_DISABLE_PROVIDER_AUTO_UPDATE"); ok {
 		c.Options.DisableProviderAutoUpdate, _ = strconv.ParseBool(str)
-	}
-
-	if str, ok := os.LookupEnv("PREPF_DISABLE_DEFAULT_PROVIDERS"); ok {
-		c.Options.DisableDefaultProviders, _ = strconv.ParseBool(str)
 	}
 
 	if c.Options.Attribution == nil {
@@ -646,39 +632,35 @@ func lookupConfigs(cwd string) []string {
 }
 
 func loadFromConfigPaths(configPaths []string) (*Config, error) {
-	var configs [][]byte
+	var configs []io.Reader
 
 	for _, path := range configPaths {
-		data, err := os.ReadFile(path)
+		fd, err := os.Open(path)
 		if err != nil {
 			if os.IsNotExist(err) {
 				continue
 			}
 			return nil, fmt.Errorf("failed to open config file %s: %w", path, err)
 		}
-		if len(data) == 0 {
-			continue
-		}
-		configs = append(configs, data)
+		defer fd.Close()
+
+		configs = append(configs, fd)
 	}
 
-	return loadFromBytes(configs)
+	return loadFromReaders(configs)
 }
 
-func loadFromBytes(configs [][]byte) (*Config, error) {
-	if len(configs) == 0 {
+func loadFromReaders(readers []io.Reader) (*Config, error) {
+	if len(readers) == 0 {
 		return &Config{}, nil
 	}
 
-	data, err := jsons.Merge(configs)
+	merged, err := Merge(readers)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to merge configuration readers: %w", err)
 	}
-	var config Config
-	if err := json.Unmarshal(data, &config); err != nil {
-		return nil, err
-	}
-	return &config, nil
+
+	return LoadReader(merged)
 }
 
 func hasVertexCredentials(env env.Env) bool {
@@ -718,8 +700,8 @@ func hasAWSCredentials(env env.Env) bool {
 
 // GlobalConfig returns the global configuration file path for the application.
 func GlobalConfig() string {
-	if langtutGlobal := os.Getenv("PREPF_GLOBAL_CONFIG"); langtutGlobal != "" {
-		return filepath.Join(langtutGlobal, fmt.Sprintf("%s.json", appName))
+	if crushGlobal := os.Getenv("CRUSH_GLOBAL_CONFIG"); crushGlobal != "" {
+		return filepath.Join(crushGlobal, fmt.Sprintf("%s.json", appName))
 	}
 	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
 		return filepath.Join(xdgConfigHome, appName, fmt.Sprintf("%s.json", appName))
@@ -730,8 +712,8 @@ func GlobalConfig() string {
 // GlobalConfigData returns the path to the main data directory for the application.
 // this config is used when the app overrides configurations instead of updating the global config.
 func GlobalConfigData() string {
-	if langtutData := os.Getenv("PREPF_GLOBAL_DATA"); langtutData != "" {
-		return filepath.Join(langtutData, fmt.Sprintf("%s.json", appName))
+	if crushData := os.Getenv("CRUSH_GLOBAL_DATA"); crushData != "" {
+		return filepath.Join(crushData, fmt.Sprintf("%s.json", appName))
 	}
 	if xdgDataHome := os.Getenv("XDG_DATA_HOME"); xdgDataHome != "" {
 		return filepath.Join(xdgDataHome, appName, fmt.Sprintf("%s.json", appName))
@@ -770,8 +752,8 @@ func isInsideWorktree() bool {
 // Skills in these directories are auto-discovered and their files can be read
 // without permission prompts.
 func GlobalSkillsDirs() []string {
-	if langtutSkills := os.Getenv("PREPF_SKILLS_DIR"); langtutSkills != "" {
-		return []string{langtutSkills}
+	if crushSkills := os.Getenv("CRUSH_SKILLS_DIR"); crushSkills != "" {
+		return []string{crushSkills}
 	}
 
 	// Determine the base config directory.

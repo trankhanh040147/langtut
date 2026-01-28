@@ -33,6 +33,7 @@ import (
 	"github.com/trankhanh040147/langtut/internal/tui/components/dialogs/copilot"
 	"github.com/trankhanh040147/langtut/internal/tui/components/dialogs/filepicker"
 	"github.com/trankhanh040147/langtut/internal/tui/components/dialogs/hyper"
+	"github.com/trankhanh040147/langtut/internal/tui/components/dialogs/mode"
 	"github.com/trankhanh040147/langtut/internal/tui/components/dialogs/models"
 	"github.com/trankhanh040147/langtut/internal/tui/components/dialogs/reasoning"
 	"github.com/trankhanh040147/langtut/internal/tui/page"
@@ -126,6 +127,10 @@ type chatPage struct {
 	isOnboarding     bool
 	isProjectInit    bool
 	promptQueue      int
+
+	// Pending message for mode selection
+	pendingMessage     string
+	pendingAttachments []message.Attachment
 
 	// Pills state
 	pillsExpanded      bool
@@ -270,6 +275,14 @@ func (p *chatPage) Update(msg tea.Msg) (util.Model, tea.Cmd) {
 		return p, p.sendMessage(msg.Text, msg.Attachments)
 	case chat.SessionSelectedMsg:
 		return p, p.setSession(msg)
+	case chat.SessionCreatedWithModeMsg:
+		cmds := []tea.Cmd{p.setSession(msg.Session)}
+		// Clear pending message
+		p.pendingMessage = ""
+		p.pendingAttachments = nil
+		// Send the message after session is set
+		cmds = append(cmds, p.sendMessageAfterSession(msg.Text, msg.Attachments))
+		return p, tea.Batch(cmds...)
 	case splash.SubmitAPIKeyMsg:
 		u, cmd := p.splash.Update(msg)
 		p.splash = u.(splash.Splash)
@@ -425,6 +438,8 @@ func (p *chatPage) Update(msg tea.Msg) (util.Model, tea.Cmd) {
 			return p, util.ReportWarn("Agent is busy, please wait before starting a new session...")
 		}
 		return p, p.newSession()
+	case mode.ModeSelectedMsg:
+		return p, p.createSessionWithModeAndSend(msg.Mode)
 	case tea.KeyPressMsg:
 		switch {
 		case key.Matches(msg, p.keyMap.NewSession):
@@ -849,6 +864,24 @@ func (p *chatPage) newSession() tea.Cmd {
 	)
 }
 
+func (p *chatPage) createSessionWithModeAndSend(selectedMode string) tea.Cmd {
+	return func() tea.Msg {
+		newSession, err := p.app.Sessions.CreateWithMode(context.Background(), "", selectedMode)
+		if err != nil {
+			return util.InfoMsg{
+				Type: util.InfoTypeError,
+				Msg:  err.Error(),
+			}
+		}
+		// Set session first, then send pending message
+		return chat.SessionCreatedWithModeMsg{
+			Session:     newSession,
+			Text:        p.pendingMessage,
+			Attachments: p.pendingAttachments,
+		}
+	}
+}
+
 func (p *chatPage) setSession(sess session.Session) tea.Cmd {
 	if p.session.ID == sess.ID {
 		return nil
@@ -955,19 +988,20 @@ func (p *chatPage) toggleDetails() {
 }
 
 func (p *chatPage) sendMessage(text string, attachments []message.Attachment) tea.Cmd {
+	if p.session.ID == "" {
+		// Store pending message and show mode selector
+		p.pendingMessage = text
+		p.pendingAttachments = attachments
+		return util.CmdHandler(dialogs.OpenDialogMsg{
+			Model: mode.NewModeDialogCmp(),
+		})
+	}
+	return p.sendMessageAfterSession(text, attachments)
+}
+
+func (p *chatPage) sendMessageAfterSession(text string, attachments []message.Attachment) tea.Cmd {
 	session := p.session
 	var cmds []tea.Cmd
-	if p.session.ID == "" {
-		// XXX: The second argument here is the session name, which we leave
-		// blank as it will be auto-generated. Ideally, we remove the need for
-		// that argument entirely.
-		newSession, err := p.app.Sessions.Create(context.Background(), "")
-		if err != nil {
-			return util.ReportError(err)
-		}
-		session = newSession
-		cmds = append(cmds, util.CmdHandler(chat.SessionSelectedMsg(session)))
-	}
 	if p.app.AgentCoordinator == nil {
 		return util.ReportError(fmt.Errorf("coder agent is not initialized"))
 	}

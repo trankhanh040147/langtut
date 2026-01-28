@@ -79,7 +79,7 @@ func (c *coordinator) agenticFetchTool(_ context.Context, client *http.Client) (
 				description = "Search the web and analyze results"
 			}
 
-			p, err := c.permissions.Request(ctx,
+			p := c.permissions.Request(
 				permission.CreatePermissionRequest{
 					SessionID:   validationResult.SessionID,
 					Path:        c.cfg.WorkingDir(),
@@ -90,14 +90,12 @@ func (c *coordinator) agenticFetchTool(_ context.Context, client *http.Client) (
 					Params:      tools.AgenticFetchPermissionsParams(params),
 				},
 			)
-			if err != nil {
-				return fantasy.ToolResponse{}, err
-			}
+
 			if !p {
 				return fantasy.ToolResponse{}, permission.ErrorPermissionDenied
 			}
 
-			tmpDir, err := os.MkdirTemp(c.cfg.Options.DataDirectory, "langtut-fetch-*")
+			tmpDir, err := os.MkdirTemp(c.cfg.Options.DataDirectory, "crush-fetch-*")
 			if err != nil {
 				return fantasy.NewTextErrorResponse(fmt.Sprintf("Failed to create temporary directory: %s", err)), nil
 			}

@@ -27,6 +27,7 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/ultraviolet/screen"
 	"github.com/charmbracelet/x/editor"
+
 	"github.com/trankhanh040147/langtut/internal/agent"
 	"github.com/trankhanh040147/langtut/internal/agent/prompt"
 	"github.com/trankhanh040147/langtut/internal/agent/tools/mcp"
@@ -2860,11 +2861,11 @@ func (m *UI) newSession() {
 
 func (m *UI) startWritingTutorSession() tea.Cmd {
 	return func() tea.Msg {
-		prompt, err := agent.WritingTutorPrompt(m.writingTutorTopic)
+		writingPrompt, err := agent.WritingTutorPrompt(m.writingTutorTopic)
 		if err != nil {
 			return uiutil.ReportError(err)()
 		}
-		m.com.App.AgentCoordinator.SetSystemPrompt(prompt)
+		m.com.App.AgentCoordinator.SetSystemPrompt(writingPrompt)
 		return sendMessageMsg{Content: "Start the writing session"}
 	}
 }

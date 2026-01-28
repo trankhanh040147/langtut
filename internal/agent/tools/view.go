@@ -35,6 +35,13 @@ type ViewPermissionsParams struct {
 	Limit    int    `json:"limit"`
 }
 
+type viewTool struct {
+	lspClients  *csync.Map[string, *lsp.Client]
+	workingDir  string
+	permissions permission.Service
+	skillsPaths []string
+}
+
 type ViewResponseMetadata struct {
 	FilePath string `json:"file_path"`
 	Content  string `json:"content"`
@@ -81,7 +88,7 @@ func NewViewTool(lspClients *csync.Map[string, *lsp.Client], permissions permiss
 					return fantasy.ToolResponse{}, fmt.Errorf("session ID is required for accessing files outside working directory")
 				}
 
-				granted, err := permissions.Request(ctx,
+				granted := permissions.Request(
 					permission.CreatePermissionRequest{
 						SessionID:   sessionID,
 						Path:        absFilePath,
@@ -92,9 +99,7 @@ func NewViewTool(lspClients *csync.Map[string, *lsp.Client], permissions permiss
 						Params:      ViewPermissionsParams(params),
 					},
 				)
-				if err != nil {
-					return fantasy.ToolResponse{}, err
-				}
+
 				if !granted {
 					return fantasy.ToolResponse{}, permission.ErrorPermissionDenied
 				}

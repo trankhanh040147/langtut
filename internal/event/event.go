@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"reflect"
 	"runtime"
-	"time"
 
 	"github.com/posthog/posthog-go"
 	"github.com/trankhanh040147/langtut/internal/version"
@@ -86,16 +85,19 @@ func Error(err any, props ...any) {
 	if client == nil {
 		return
 	}
-	posthogErr := client.Enqueue(posthog.NewDefaultException(
-		time.Now(),
-		distinctId,
-		reflect.TypeOf(err).String(),
-		fmt.Sprintf("%v", err),
-	))
-	if err != nil {
-		slog.Error("Failed to enqueue PostHog error", "err", err, "props", props, "posthogErr", posthogErr)
-		return
-	}
+	// The PostHog Go client does not yet support sending exceptions.
+	// We're mimicking the behavior by sending the minimal info required
+	// for PostHog to recognize this as an exception event.
+	props = append(
+		[]any{
+			"$exception_list",
+			[]map[string]string{
+				{"type": reflect.TypeOf(err).String(), "value": fmt.Sprintf("%v", err)},
+			},
+		},
+		props...,
+	)
+	send("$exception", props...)
 }
 
 func Flush() {

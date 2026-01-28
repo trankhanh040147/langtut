@@ -186,7 +186,9 @@ func (m *ModelListComponent) SetModelType(modelType int) tea.Cmd {
 
 	// Move "Charm Hyper" to first position
 	// (but still after recent models and custom providers).
-	slices.SortStableFunc(m.providers, func(a, b catwalk.Provider) int {
+	sortedProviders := make([]catwalk.Provider, len(m.providers))
+	copy(sortedProviders, m.providers)
+	slices.SortStableFunc(sortedProviders, func(a, b catwalk.Provider) int {
 		switch {
 		case a.ID == "hyper":
 			return -1
@@ -198,7 +200,7 @@ func (m *ModelListComponent) SetModelType(modelType int) tea.Cmd {
 	})
 
 	// Then add the known providers from the predefined list
-	for _, provider := range m.providers {
+	for _, provider := range sortedProviders {
 		// Skip if we already added this provider as an unknown provider
 		if addedProviders[string(provider.ID)] {
 			continue

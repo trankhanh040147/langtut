@@ -17,6 +17,8 @@ import (
 
 	"charm.land/fantasy"
 	"github.com/charmbracelet/catwalk/pkg/catwalk"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/trankhanh040147/langtut/internal/agent/hyper"
 	"github.com/trankhanh040147/langtut/internal/agent/prompt"
 	"github.com/trankhanh040147/langtut/internal/agent/tools"
@@ -29,7 +31,6 @@ import (
 	"github.com/trankhanh040147/langtut/internal/oauth/copilot"
 	"github.com/trankhanh040147/langtut/internal/permission"
 	"github.com/trankhanh040147/langtut/internal/session"
-	"golang.org/x/sync/errgroup"
 
 	"charm.land/fantasy/providers/anthropic"
 	"charm.land/fantasy/providers/azure"
@@ -56,7 +57,6 @@ type Coordinator interface {
 	Summarize(context.Context, string) error
 	Model() Model
 	UpdateModels(ctx context.Context) error
-	SetSystemPrompt(systemPrompt string)
 }
 
 type coordinator struct {
@@ -112,18 +112,75 @@ func NewCoordinator(
 	return c, nil
 }
 
+func (c *coordinator) getPromptForMode(mode string) (*prompt.Prompt, error) {
+	var p *prompt.Prompt
+	var err error
+	switch mode {
+	case "vocab":
+		p, err = vocabPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
+	case "writing-tutor":
+		p, err = writingTutorPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
+	default:
+		p, err = coderPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
+	}
+	return p, err
+}
+
+func (c *coordinator) ensureAgentForMode(ctx context.Context, mode string) error {
+	if mode == "" {
+		mode = "coder"
+	}
+	agentKey := "coder:" + mode
+	if _, exists := c.agents[agentKey]; exists {
+		return nil
+	}
+
+	agentCfg, ok := c.cfg.Agents[config.AgentCoder]
+	if !ok {
+		return errors.New("coder agent not configured")
+	}
+
+	p, err := c.getPromptForMode(mode)
+	if err != nil {
+		return err
+	}
+
+	agent, err := c.buildAgent(ctx, p, agentCfg, false)
+	if err != nil {
+		return err
+	}
+	c.agents[agentKey] = agent
+	return nil
+}
+
+func (c *coordinator) getAgentForMode(mode string) SessionAgent {
+	if mode == "" {
+		return c.currentAgent
+	}
+	agentKey := "coder:" + mode
+	if agent, exists := c.agents[agentKey]; exists {
+		return agent
+	}
+	return c.currentAgent
+}
+
 // Run implements Coordinator.
 func (c *coordinator) Run(ctx context.Context, sessionID string, prompt string, attachments ...message.Attachment) (*fantasy.AgentResult, error) {
 	if err := c.readyWg.Wait(); err != nil {
 		return nil, err
 	}
 
-	// refresh models before each run
-	if err := c.UpdateModels(ctx); err != nil {
-		return nil, fmt.Errorf("failed to update models: %w", err)
+	sess, err := c.sessions.Get(ctx, sessionID)
+	if err != nil {
+		return nil, err
 	}
 
-	model := c.currentAgent.Model()
+	if err := c.ensureAgentForMode(ctx, sess.Mode); err != nil {
+		return nil, err
+	}
+
+	agent := c.getAgentForMode(sess.Mode)
+	model := agent.Model()
 	maxTokens := model.CatwalkCfg.DefaultMaxTokens
 	if model.ModelCfg.MaxTokens != 0 {
 		maxTokens = model.ModelCfg.MaxTokens
@@ -155,7 +212,7 @@ func (c *coordinator) Run(ctx context.Context, sessionID string, prompt string, 
 	}
 
 	run := func() (*fantasy.AgentResult, error) {
-		return c.currentAgent.Run(ctx, SessionAgentCall{
+		return agent.Run(ctx, SessionAgentCall{
 			SessionID:        sessionID,
 			Prompt:           prompt,
 			Attachments:      attachments,
@@ -328,12 +385,17 @@ func (c *coordinator) buildAgent(ctx context.Context, prompt *prompt.Prompt, age
 		return nil, err
 	}
 
+	systemPrompt, err := prompt.Build(ctx, large.Model.Provider(), large.Model.Model(), *c.cfg)
+	if err != nil {
+		return nil, err
+	}
+
 	largeProviderCfg, _ := c.cfg.Providers.Get(large.ModelCfg.Provider)
 	result := NewSessionAgent(SessionAgentOptions{
 		large,
 		small,
 		largeProviderCfg.SystemPromptPrefix,
-		"",
+		systemPrompt,
 		isSubAgent,
 		c.cfg.Options.DisableAutoSummarize,
 		c.permissions.SkipRequests(),
@@ -341,16 +403,6 @@ func (c *coordinator) buildAgent(ctx context.Context, prompt *prompt.Prompt, age
 		c.messages,
 		nil,
 	})
-
-	c.readyWg.Go(func() error {
-		systemPrompt, err := prompt.Build(ctx, large.Model.Provider(), large.Model.Model(), *c.cfg)
-		if err != nil {
-			return err
-		}
-		result.SetSystemPrompt(systemPrompt)
-		return nil
-	})
-
 	c.readyWg.Go(func() error {
 		tools, err := c.buildTools(ctx, agent)
 		if err != nil {
@@ -407,7 +459,7 @@ func (c *coordinator) buildTools(ctx context.Context, agent config.Agent) ([]fan
 	)
 
 	if len(c.cfg.LSP) > 0 {
-		allTools = append(allTools, tools.NewDiagnosticsTool(c.lspClients), tools.NewReferencesTool(c.lspClients), tools.NewLSPRestartTool(c.lspClients))
+		allTools = append(allTools, tools.NewDiagnosticsTool(c.lspClients), tools.NewReferencesTool(c.lspClients))
 	}
 
 	var filteredTools []fantasy.AgentTool
@@ -495,7 +547,7 @@ func (c *coordinator) buildAgentModels(ctx context.Context, isSubAgent bool) (Mo
 	}
 
 	if smallCatwalkModel == nil {
-		return Model{}, Model{}, errors.New("small model not found in provider config")
+		return Model{}, Model{}, errors.New("snall model not found in provider config")
 	}
 
 	largeModelID := largeModelCfg.Model
@@ -838,10 +890,6 @@ func (c *coordinator) Summarize(ctx context.Context, sessionID string) error {
 		return errors.New("model provider not configured")
 	}
 	return c.currentAgent.Summarize(ctx, sessionID, getProviderOptions(c.currentAgent.Model(), providerCfg))
-}
-
-func (c *coordinator) SetSystemPrompt(systemPrompt string) {
-	c.currentAgent.SetSystemPrompt(systemPrompt)
 }
 
 func (c *coordinator) isUnauthorized(err error) bool {

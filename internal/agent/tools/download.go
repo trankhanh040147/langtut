@@ -70,7 +70,7 @@ func NewDownloadTool(permissions permission.Service, workingDir string, client *
 				return fantasy.ToolResponse{}, fmt.Errorf("session ID is required for downloading files")
 			}
 
-			p, err := permissions.Request(ctx,
+			p := permissions.Request(
 				permission.CreatePermissionRequest{
 					SessionID:   sessionID,
 					Path:        filePath,
@@ -80,9 +80,7 @@ func NewDownloadTool(permissions permission.Service, workingDir string, client *
 					Params:      DownloadPermissionsParams(params),
 				},
 			)
-			if err != nil {
-				return fantasy.ToolResponse{}, err
-			}
+
 			if !p {
 				return fantasy.ToolResponse{}, permission.ErrorPermissionDenied
 			}
@@ -104,7 +102,7 @@ func NewDownloadTool(permissions permission.Service, workingDir string, client *
 				return fantasy.ToolResponse{}, fmt.Errorf("failed to create request: %w", err)
 			}
 
-			req.Header.Set("User-Agent", "langtut/1.0")
+			req.Header.Set("User-Agent", "crush/1.0")
 
 			resp, err := client.Do(req)
 			if err != nil {

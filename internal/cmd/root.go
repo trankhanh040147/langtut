@@ -19,7 +19,6 @@ import (
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/charmbracelet/x/exp/charmtone"
-	xstrings "github.com/charmbracelet/x/exp/strings"
 	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 	"github.com/trankhanh040147/langtut/internal/app"
@@ -27,18 +26,14 @@ import (
 	"github.com/trankhanh040147/langtut/internal/db"
 	"github.com/trankhanh040147/langtut/internal/event"
 	"github.com/trankhanh040147/langtut/internal/projects"
+	"github.com/trankhanh040147/langtut/internal/stringext"
 	"github.com/trankhanh040147/langtut/internal/tui"
-	"github.com/trankhanh040147/langtut/internal/ui/common"
-	ui "github.com/trankhanh040147/langtut/internal/ui/model"
 	"github.com/trankhanh040147/langtut/internal/version"
 )
 
-// kittyTerminals defines terminals supporting querying capabilities.
-var kittyTerminals = []string{"alacritty", "ghostty", "kitty", "rio", "wezterm"}
-
 func init() {
 	rootCmd.PersistentFlags().StringP("cwd", "c", "", "Current working directory")
-	rootCmd.PersistentFlags().StringP("data-dir", "D", "", "Custom langtut data directory")
+	rootCmd.PersistentFlags().StringP("data-dir", "D", "", "Custom crush data directory")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Debug")
 	rootCmd.Flags().BoolP("help", "h", false, "Help")
 	rootCmd.Flags().BoolP("yolo", "y", false, "Automatically accept all permissions (dangerous mode)")
@@ -51,7 +46,6 @@ func init() {
 		logsCmd,
 		schemaCmd,
 		loginCmd,
-		statsCmd,
 	)
 }
 
@@ -61,25 +55,25 @@ var rootCmd = &cobra.Command{
 	Long:  "An AI assistant for software development and similar tasks with direct access to the terminal",
 	Example: `
 # Run in interactive mode
-langtut
+crush
 
 # Run with debug logging
-langtut -d
+crush -d
 
 # Run with debug logging in a specific directory
-langtut -d -c /path/to/project
+crush -d -c /path/to/project
 
 # Run with custom data directory
-langtut -D /path/to/custom/.langtut
+crush -D /path/to/custom/.langtut
 
 # Print version
-langtut -v
+crush -v
 
 # Run a single non-interactive prompt
-langtut run "Explain the use of context in Go"
+crush run "Explain the use of context in Go"
 
 # Run in dangerous mode (auto-accept all permissions)
-langtut -y
+crush -y
   `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := setupAppWithProgressBar(cmd)
@@ -92,21 +86,11 @@ langtut -y
 
 		// Set up the TUI.
 		var env uv.Environ = os.Environ()
+		ui := tui.New(app)
+		ui.QueryVersion = shouldQueryTerminalVersion(env)
 
-		var model tea.Model
-		if v, _ := strconv.ParseBool(env.Getenv("PREPF_NEW_UI")); v {
-			slog.Info("New UI in control!")
-			com := common.DefaultCommon(app)
-			ui := ui.New(com)
-			ui.QueryCapabilities = shouldQueryCapabilities(env)
-			model = ui
-		} else {
-			ui := tui.New(app)
-			ui.QueryVersion = shouldQueryCapabilities(env)
-			model = ui
-		}
 		program := tea.NewProgram(
-			model,
+			ui,
 			tea.WithEnvironment(env),
 			tea.WithContext(cmd.Context()),
 			tea.WithFilter(tui.MouseEventFilter)) // Filter mouse events based on focus state
@@ -115,7 +99,7 @@ langtut -y
 		if _, err := program.Run(); err != nil {
 			event.Error(err)
 			slog.Error("TUI run error", "error", err)
-			return errors.New("Langtut crashed. If metrics are enabled, we were notified about it. If you'd like to report it, please copy the stacktrace above and open an issue at https://github.com/charmbracelet/langtut/issues/new?template=bug.yml") //nolint:staticcheck
+			return errors.New("Crush crashed. If metrics are enabled, we were notified about it. If you'd like to report it, please copy the stacktrace above and open an issue at https://github.com/trankhanh040147/langtut/issues/new?template=bug.yml") //nolint:staticcheck
 		}
 		return nil
 	},
@@ -211,7 +195,7 @@ func setupApp(cmd *cobra.Command) (*app.App, error) {
 	}
 	cfg.Permissions.SkipRequests = yolo
 
-	if err := createDotLangtutDir(cfg.Options.DataDirectory); err != nil {
+	if err := createDotCrushDir(cfg.Options.DataDirectory); err != nil {
 		return nil, err
 	}
 
@@ -241,7 +225,7 @@ func setupApp(cmd *cobra.Command) (*app.App, error) {
 }
 
 func shouldEnableMetrics() bool {
-	if v, _ := strconv.ParseBool(os.Getenv("PREPF_DISABLE_METRICS")); v {
+	if v, _ := strconv.ParseBool(os.Getenv("CRUSH_DISABLE_METRICS")); v {
 		return false
 	}
 	if v, _ := strconv.ParseBool(os.Getenv("DO_NOT_TRACK")); v {
@@ -288,7 +272,7 @@ func ResolveCwd(cmd *cobra.Command) (string, error) {
 	return cwd, nil
 }
 
-func createDotLangtutDir(dir string) error {
+func createDotCrushDir(dir string) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("failed to create data directory: %q %w", dir, err)
 	}
@@ -303,16 +287,12 @@ func createDotLangtutDir(dir string) error {
 	return nil
 }
 
-func shouldQueryCapabilities(env uv.Environ) bool {
-	const osVendorTypeApple = "Apple"
+func shouldQueryTerminalVersion(env uv.Environ) bool {
 	termType := env.Getenv("TERM")
 	termProg, okTermProg := env.LookupEnv("TERM_PROGRAM")
 	_, okSSHTTY := env.LookupEnv("SSH_TTY")
-	if okTermProg && strings.Contains(termProg, osVendorTypeApple) {
-		return false
-	}
 	return (!okTermProg && !okSSHTTY) ||
-		(!strings.Contains(termProg, osVendorTypeApple) && !okSSHTTY) ||
+		(!strings.Contains(termProg, "Apple") && !okSSHTTY) ||
 		// Terminals that do support XTVERSION.
-		xstrings.ContainsAnyOf(termType, kittyTerminals...)
+		stringext.ContainsAny(termType, "alacritty", "ghostty", "kitty", "rio", "wezterm")
 }

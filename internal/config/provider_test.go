@@ -105,7 +105,7 @@ func TestProviders_Integration_WithCachedData(t *testing.T) {
 	catwalkPath := tmpDir + "/langtut/providers.json"
 	hyperPath := tmpDir + "/langtut/hyper.json"
 
-	require.NoError(t, os.MkdirAll(tmpDir+"/langtut", 0o755))
+	require.NoError(t, os.MkdirAll(tmpDir+"/crush", 0o755))
 
 	// Write Catwalk cache.
 	catwalkProviders := []catwalk.Provider{

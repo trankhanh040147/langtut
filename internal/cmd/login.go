@@ -21,16 +21,16 @@ import (
 var loginCmd = &cobra.Command{
 	Aliases: []string{"auth"},
 	Use:     "login [platform]",
-	Short:   "Login Langtut to a platform",
-	Long: `Login Langtut to a specified platform.
+	Short:   "Login Crush to a platform",
+	Long: `Login Crush to a specified platform.
 The platform should be provided as an argument.
 Available platforms are: hyper, copilot.`,
 	Example: `
 # Authenticate with Charm Hyper
-langtut login
+crush login
 
 # Authenticate with GitHub Copilot
-langtut login copilot
+crush login copilot
   `,
 	ValidArgs: []cobra.Completion{
 		"hyper",
@@ -168,7 +168,7 @@ func loginCopilot() error {
 			fmt.Println()
 			fmt.Println(lipgloss.NewStyle().Hyperlink(copilot.SignupURL, "id=copilot-signup").Render(copilot.SignupURL))
 			fmt.Println()
-			fmt.Println("You may be able to request free access if eligible. For more information, see:")
+			fmt.Println("You may be able to request free access if elegible. For more information, see:")
 			fmt.Println()
 			fmt.Println(lipgloss.NewStyle().Hyperlink(copilot.FreeURL, "id=copilot-free").Render(copilot.FreeURL))
 		}

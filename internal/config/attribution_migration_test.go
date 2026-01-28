@@ -1,6 +1,8 @@
 package config
 
 import (
+	"io"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -81,7 +83,7 @@ func TestAttributionMigration(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			cfg, err := loadFromBytes([][]byte{[]byte(tt.configJSON)})
+			cfg, err := loadFromReaders([]io.Reader{strings.NewReader(tt.configJSON)})
 			require.NoError(t, err)
 
 			cfg.setDefaults(t.TempDir(), "")

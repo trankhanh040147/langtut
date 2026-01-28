@@ -77,7 +77,7 @@ func InitiateDeviceAuth(ctx context.Context) (*DeviceAuthResponse, error) {
 
 func deviceName() string {
 	if hostname, err := os.Hostname(); err == nil && hostname != "" {
-		return "Langtut (" + hostname + ")"
+		return "Crush (" + hostname + ")"
 	}
 	return "Langtut"
 }

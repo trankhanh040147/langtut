@@ -12,14 +12,13 @@ import (
 	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
-	xstrings "github.com/charmbracelet/x/exp/strings"
 	"github.com/trankhanh040147/langtut/internal/agent/tools/mcp"
 	"github.com/trankhanh040147/langtut/internal/app"
 	"github.com/trankhanh040147/langtut/internal/config"
 	"github.com/trankhanh040147/langtut/internal/event"
-	"github.com/trankhanh040147/langtut/internal/home"
 	"github.com/trankhanh040147/langtut/internal/permission"
 	"github.com/trankhanh040147/langtut/internal/pubsub"
+	"github.com/trankhanh040147/langtut/internal/stringext"
 	cmpChat "github.com/trankhanh040147/langtut/internal/tui/components/chat"
 	"github.com/trankhanh040147/langtut/internal/tui/components/chat/splash"
 	"github.com/trankhanh040147/langtut/internal/tui/components/completions"
@@ -129,7 +128,7 @@ func (a *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		termVersion := strings.ToLower(msg.Name)
 		switch {
-		case xstrings.ContainsAnyOf(termVersion, "ghostty", "rio"):
+		case stringext.ContainsAny(termVersion, "ghostty", "rio"):
 			a.sendProgressBar = true
 		case strings.Contains(termVersion, "iterm2"):
 			// iTerm2 supports progress bars from version v3.6.6
@@ -386,7 +385,7 @@ func (a *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		return a, tea.Batch(cmds...)
 	// Update Available
-	case app.UpdateAvailableMsg:
+	case pubsub.UpdateAvailableMsg:
 		// Show update notification in status bar
 		statusMsg := fmt.Sprintf("Langtut update available: v%s → v%s.", msg.CurrentVersion, msg.LatestVersion)
 		if msg.IsDevelopment {
@@ -593,7 +592,6 @@ func (a *appModel) View() tea.View {
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
 	view.BackgroundColor = t.BgBase
-	view.WindowTitle = "langtut " + home.Short(config.Get().WorkingDir())
 	if a.wWidth < 25 || a.wHeight < 15 {
 		view.Content = t.S().Base.Width(a.wWidth).Height(a.wHeight).
 			Align(lipgloss.Center, lipgloss.Center).

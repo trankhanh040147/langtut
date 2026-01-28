@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestLangtutIgnore(t *testing.T) {
+func TestCrushIgnore(t *testing.T) {
 	tempDir := t.TempDir()
 	t.Chdir(tempDir)
 
@@ -51,8 +51,8 @@ func TestShouldExcludeFile(t *testing.T) {
 	}
 
 	// Create .langtutignore file
-	langtutignoreContent := "custom_ignored/\n"
-	if err := os.WriteFile(filepath.Join(tempDir, ".langtutignore"), []byte(langtutignoreContent), 0o644); err != nil {
+	crushignoreContent := "custom_ignored/\n"
+	if err := os.WriteFile(filepath.Join(tempDir, ".langtutignore"), []byte(crushignoreContent), 0o644); err != nil {
 		t.Fatalf("Failed to create .langtutignore: %v", err)
 	}
 
@@ -85,8 +85,8 @@ func TestShouldExcludeFileHierarchical(t *testing.T) {
 	}
 
 	// Create .langtutignore in subdir that ignores normal_nested
-	subLangtutignore := "normal_nested/\n"
-	if err := os.WriteFile(filepath.Join(subDir, ".langtutignore"), []byte(subLangtutignore), 0o644); err != nil {
+	subCrushignore := "normal_nested/\n"
+	if err := os.WriteFile(filepath.Join(subDir, ".langtutignore"), []byte(subCrushignore), 0o644); err != nil {
 		t.Fatalf("Failed to create subdir .langtutignore: %v", err)
 	}
 

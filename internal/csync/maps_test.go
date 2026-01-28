@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"maps"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -47,12 +46,12 @@ func TestNewLazyMap(t *testing.T) {
 
 		waiter := sync.Mutex{}
 		waiter.Lock()
-		var loadCalled atomic.Bool
+		loadCalled := false
 
 		loadFunc := func() map[string]int {
 			waiter.Lock()
 			defer waiter.Unlock()
-			loadCalled.Store(true)
+			loadCalled = true
 			return map[string]int{
 				"key1": 1,
 				"key2": 2,
@@ -64,7 +63,7 @@ func TestNewLazyMap(t *testing.T) {
 
 		waiter.Unlock() // Allow the load function to proceed
 		time.Sleep(100 * time.Millisecond)
-		require.True(t, loadCalled.Load())
+		require.True(t, loadCalled)
 		require.Equal(t, 2, m.Len())
 
 		value, ok := m.Get("key1")

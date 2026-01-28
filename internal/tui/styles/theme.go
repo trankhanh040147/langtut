@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"image/color"
 	"strings"
-	"sync"
 
 	"charm.land/bubbles/v2/filepicker"
 	"charm.land/bubbles/v2/help"
@@ -98,8 +97,7 @@ type Theme struct {
 	AuthBorderUnselected lipgloss.Style
 	AuthTextUnselected   lipgloss.Style
 
-	styles     *Styles
-	stylesOnce sync.Once
+	styles *Styles
 }
 
 type Styles struct {
@@ -136,9 +134,9 @@ type Styles struct {
 }
 
 func (t *Theme) S() *Styles {
-	t.stylesOnce.Do(func() {
+	if t.styles == nil {
 		t.styles = t.buildStyles()
-	})
+	}
 	return t.styles
 }
 
@@ -502,31 +500,27 @@ type Manager struct {
 	current *Theme
 }
 
-var (
-	defaultManager     *Manager
-	defaultManagerOnce sync.Once
-)
-
-func initDefaultManager() *Manager {
-	defaultManagerOnce.Do(func() {
-		defaultManager = newManager()
-	})
-	return defaultManager
-}
+var defaultManager *Manager
 
 func SetDefaultManager(m *Manager) {
 	defaultManager = m
 }
 
 func DefaultManager() *Manager {
-	return initDefaultManager()
+	if defaultManager == nil {
+		defaultManager = NewManager()
+	}
+	return defaultManager
 }
 
 func CurrentTheme() *Theme {
-	return initDefaultManager().Current()
+	if defaultManager == nil {
+		defaultManager = NewManager()
+	}
+	return defaultManager.Current()
 }
 
-func newManager() *Manager {
+func NewManager() *Manager {
 	m := &Manager{
 		themes: make(map[string]*Theme),
 	}

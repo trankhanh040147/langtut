@@ -28,17 +28,10 @@ type LSPermissionsParams struct {
 	Depth  int      `json:"depth"`
 }
 
-type NodeType string
-
-const (
-	NodeTypeFile      NodeType = "file"
-	NodeTypeDirectory NodeType = "directory"
-)
-
 type TreeNode struct {
 	Name     string      `json:"name"`
 	Path     string      `json:"path"`
-	Type     NodeType    `json:"type"`
+	Type     string      `json:"type"` // "file" or "directory"
 	Children []*TreeNode `json:"children,omitempty"`
 }
 
@@ -86,7 +79,7 @@ func NewLsTool(permissions permission.Service, workingDir string, lsConfig confi
 					return fantasy.ToolResponse{}, fmt.Errorf("session ID is required for accessing directories outside working directory")
 				}
 
-				granted, err := permissions.Request(ctx,
+				granted := permissions.Request(
 					permission.CreatePermissionRequest{
 						SessionID:   sessionID,
 						Path:        absSearchPath,
@@ -97,9 +90,7 @@ func NewLsTool(permissions permission.Service, workingDir string, lsConfig confi
 						Params:      LSPermissionsParams(params),
 					},
 				)
-				if err != nil {
-					return fantasy.ToolResponse{}, err
-				}
+
 				if !granted {
 					return fantasy.ToolResponse{}, permission.ErrorPermissionDenied
 				}
@@ -186,9 +177,9 @@ func createFileTree(sortedPaths []string, rootPath string) []*TreeNode {
 
 			isLastPart := i == len(parts)-1
 			isDir := !isLastPart || strings.HasSuffix(relativePath, string(filepath.Separator))
-			nodeType := NodeTypeFile
+			nodeType := "file"
 			if isDir {
-				nodeType = NodeTypeDirectory
+				nodeType = "directory"
 			}
 			newNode := &TreeNode{
 				Name:     part,
@@ -235,13 +226,13 @@ func printNode(builder *strings.Builder, node *TreeNode, level int) {
 	indent := strings.Repeat("  ", level)
 
 	nodeName := node.Name
-	if node.Type == NodeTypeDirectory {
+	if node.Type == "directory" {
 		nodeName = nodeName + "/"
 	}
 
 	fmt.Fprintf(builder, "%s- %s\n", indent, nodeName)
 
-	if node.Type == NodeTypeDirectory && len(node.Children) > 0 {
+	if node.Type == "directory" && len(node.Children) > 0 {
 		for _, child := range node.Children {
 			printNode(builder, child, level+1)
 		}

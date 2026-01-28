@@ -51,7 +51,7 @@ type modelPair struct {
 func anthropicBuilder(model string) builderFunc {
 	return func(t *testing.T, r *vcr.Recorder) (fantasy.LanguageModel, error) {
 		provider, err := anthropic.New(
-			anthropic.WithAPIKey(os.Getenv("PREPF_ANTHROPIC_API_KEY")),
+			anthropic.WithAPIKey(os.Getenv("CRUSH_ANTHROPIC_API_KEY")),
 			anthropic.WithHTTPClient(&http.Client{Transport: r}),
 		)
 		if err != nil {
@@ -64,7 +64,7 @@ func anthropicBuilder(model string) builderFunc {
 func openaiBuilder(model string) builderFunc {
 	return func(t *testing.T, r *vcr.Recorder) (fantasy.LanguageModel, error) {
 		provider, err := openai.New(
-			openai.WithAPIKey(os.Getenv("PREPF_OPENAI_API_KEY")),
+			openai.WithAPIKey(os.Getenv("CRUSH_OPENAI_API_KEY")),
 			openai.WithHTTPClient(&http.Client{Transport: r}),
 		)
 		if err != nil {
@@ -77,7 +77,7 @@ func openaiBuilder(model string) builderFunc {
 func openRouterBuilder(model string) builderFunc {
 	return func(t *testing.T, r *vcr.Recorder) (fantasy.LanguageModel, error) {
 		provider, err := openrouter.New(
-			openrouter.WithAPIKey(os.Getenv("PREPF_OPENROUTER_API_KEY")),
+			openrouter.WithAPIKey(os.Getenv("CRUSH_OPENROUTER_API_KEY")),
 			openrouter.WithHTTPClient(&http.Client{Transport: r}),
 		)
 		if err != nil {
@@ -91,7 +91,7 @@ func zAIBuilder(model string) builderFunc {
 	return func(t *testing.T, r *vcr.Recorder) (fantasy.LanguageModel, error) {
 		provider, err := openaicompat.New(
 			openaicompat.WithBaseURL("https://api.z.ai/api/coding/paas/v4"),
-			openaicompat.WithAPIKey(os.Getenv("PREPF_ZAI_API_KEY")),
+			openaicompat.WithAPIKey(os.Getenv("CRUSH_ZAI_API_KEY")),
 			openaicompat.WithHTTPClient(&http.Client{Transport: r}),
 		)
 		if err != nil {
@@ -102,7 +102,7 @@ func zAIBuilder(model string) builderFunc {
 }
 
 func testEnv(t *testing.T) fakeEnv {
-	workingDir := filepath.Join("/tmp/langtut-test/", t.Name())
+	workingDir := filepath.Join("/tmp/crush-test/", t.Name())
 	os.RemoveAll(workingDir)
 
 	err := os.MkdirAll(workingDir, 0o755)
@@ -112,7 +112,7 @@ func testEnv(t *testing.T) fakeEnv {
 	require.NoError(t, err)
 
 	q := db.New(conn)
-	sessions := session.NewService(q, conn)
+	sessions := session.NewService(q)
 	messages := message.NewService(q)
 
 	permissions := permission.NewPermissionService(workingDir, true, []string{})

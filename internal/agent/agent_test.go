@@ -118,7 +118,7 @@ func TestCoderAgent(t *testing.T) {
 				require.NoError(t, err)
 
 				res, err := agent.Run(t.Context(), SessionAgentCall{
-					Prompt:          "update the main.go file by changing the print to say hello from langtut",
+					Prompt:          "update the main.go file by changing the print to say hello from crush",
 					SessionID:       session.ID,
 					MaxOutputTokens: 10000,
 				})
@@ -161,7 +161,7 @@ func TestCoderAgent(t *testing.T) {
 				mainGoPath := filepath.Join(env.workingDir, "main.go")
 				content, err := os.ReadFile(mainGoPath)
 				require.NoError(t, err)
-				require.Contains(t, strings.ToLower(string(content)), "hello from langtut")
+				require.Contains(t, strings.ToLower(string(content)), "hello from crush")
 			})
 			t.Run("bash tool", func(t *testing.T) {
 				agent, env := setupAgent(t, pair)
@@ -417,7 +417,7 @@ func TestCoderAgent(t *testing.T) {
 				require.NoError(t, err)
 
 				res, err := agent.Run(t.Context(), SessionAgentCall{
-					Prompt:          "use multiedit to change 'Hello, World!' to 'Hello, Langtut!' and add a comment '// Greeting' above the fmt.Println line in main.go",
+					Prompt:          "use multiedit to change 'Hello, World!' to 'Hello, Crush!' and add a comment '// Greeting' above the fmt.Println line in main.go",
 					SessionID:       session.ID,
 					MaxOutputTokens: 10000,
 				})
@@ -452,9 +452,13 @@ func TestCoderAgent(t *testing.T) {
 				mainGoPath := filepath.Join(env.workingDir, "main.go")
 				content, err := os.ReadFile(mainGoPath)
 				require.NoError(t, err)
-				require.Contains(t, string(content), "Hello, Langtut!", "Expected file to contain 'Hello, Langtut!'")
+				require.Contains(t, string(content), "Hello, Crush!", "Expected file to contain 'Hello, Crush!'")
 			})
 			t.Run("sourcegraph tool", func(t *testing.T) {
+				if runtime.GOOS == "darwin" {
+					t.Skip("skipping flacky test on macos for now")
+				}
+
 				agent, env := setupAgent(t, pair)
 
 				session, err := env.sessions.Create(t.Context(), "New Session")

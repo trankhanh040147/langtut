@@ -65,14 +65,14 @@ When user asks to create git commit:
    Commit message here.
 
 {{ if .Attribution.GeneratedWith }}
-   💘 Generated with Langtut
+   💘 Generated with Crush
 {{ end}}
 {{if eq .Attribution.TrailerStyle "assisted-by" }}
 
-   Assisted-by: {{ .ModelName }} via Langtut <langtut@charm.land>
+   Assisted-by: {{ .ModelName }} via Crush <crush@charm.land>
 {{ else if eq .Attribution.TrailerStyle "co-authored-by" }}
 
-   Co-Authored-By: Langtut <langtut@charm.land>
+   Co-Authored-By: Crush <crush@charm.land>
 {{ end }}
 
    EOF
@@ -124,7 +124,7 @@ Use gh command for ALL GitHub tasks. When user asks to create PR:
    [Checklist of TODOs...]
 
 {{ if .Attribution.GeneratedWith}}
-   💘 Generated with Langtut
+   💘 Generated with Crush
 {{ end }}
 
    EOF

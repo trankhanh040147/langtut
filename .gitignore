@@ -4,7 +4,6 @@
 *.dll
 *.so
 *.dylib
-langtut
 
 # Test binary, built with `go test -c`
 *.test
@@ -43,11 +42,12 @@ Thumbs.db
 .env
 .env.local
 
-**/.crush/**
+**/.langtut/**
 
-/crush
+/langtut
 /tmp/
 
 manpages/
-completions/crush.*sh
+completions/
+!internal/tui/components/completions/
 .prettierignore

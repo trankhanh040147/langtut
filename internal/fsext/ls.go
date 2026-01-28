@@ -70,7 +70,7 @@ var commonIgnorePatterns = sync.OnceValue(func() ignore.IgnoreParser {
 		".Spotlight-V100",
 		".fseventsd",
 
-		// Langtut
+		// Crush
 		".langtut",
 
 		// macOS stuff

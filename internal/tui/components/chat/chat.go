@@ -30,6 +30,12 @@ type SessionSelectedMsg = session.Session
 
 type SessionClearedMsg struct{}
 
+type SessionCreatedWithModeMsg struct {
+	Session     session.Session
+	Text        string
+	Attachments []message.Attachment
+}
+
 type SelectionCopyMsg struct {
 	clickCount   int
 	endSelection bool

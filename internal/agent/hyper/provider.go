@@ -37,7 +37,7 @@ var Enabled = sync.OnceValue(func() bool {
 	b, _ := strconv.ParseBool(
 		cmp.Or(
 			os.Getenv("HYPER"),
-			os.Getenv("HYPERPREPF"),
+			os.Getenv("HYPERCRUSH"),
 			os.Getenv("HYPER_ENABLE"),
 			os.Getenv("HYPER_ENABLED"),
 		),
@@ -86,7 +86,7 @@ func New(opts ...Option) (fantasy.Provider, error) {
 		baseURL: BaseURL() + "/api/v1/fantasy",
 		name:    Name,
 		headers: map[string]string{
-			"x-langtut-id": event.GetID(),
+			"x-crush-id": event.GetID(),
 		},
 		client: &http.Client{Timeout: 0}, // stream-safe
 	}
@@ -326,5 +326,5 @@ func retryAfter(resp *http.Response) string {
 		d := time.Duration(after) * time.Second
 		return "Try again in " + d.String()
 	}
-	return "Try again later"
+	return "Try again in later"
 }

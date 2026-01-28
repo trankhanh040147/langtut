@@ -71,7 +71,7 @@ func NewFastGlobWalker(searchPath string) *FastGlobWalker {
 }
 
 // ShouldSkip checks if a path should be skipped based on hierarchical gitignore,
-// langtutignore, and hidden file rules
+// crushignore, and hidden file rules
 func (w *FastGlobWalker) ShouldSkip(path string) bool {
 	return w.directoryLister.shouldIgnore(path, nil)
 }

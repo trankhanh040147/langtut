@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/charmbracelet/langtut/internal/config/config",
+  "$id": "https://github.com/trankhanh040147/langtut/internal/config/config",
   "$ref": "#/$defs/Config",
   "$defs": {
     "Attribution": {
@@ -62,6 +62,16 @@
           },
           "type": "object",
           "description": "Model configurations for different model types"
+        },
+        "recent_models": {
+          "additionalProperties": {
+            "items": {
+              "$ref": "#/$defs/SelectedModel"
+            },
+            "type": "array"
+          },
+          "type": "object",
+          "description": "Recently used models sorted by most recent first"
         },
         "providers": {
           "additionalProperties": {
@@ -409,11 +419,6 @@
         "disable_provider_auto_update": {
           "type": "boolean",
           "description": "Disable providers auto-update",
-          "default": false
-        },
-        "disable_default_providers": {
-          "type": "boolean",
-          "description": "Ignore all default/embedded providers. When enabled",
           "default": false
         },
         "attribution": {

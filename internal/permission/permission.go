@@ -47,7 +47,7 @@ type Service interface {
 	GrantPersistent(permission PermissionRequest)
 	Grant(permission PermissionRequest)
 	Deny(permission PermissionRequest)
-	Request(ctx context.Context, opts CreatePermissionRequest) (bool, error)
+	Request(opts CreatePermissionRequest) bool
 	AutoApproveSession(sessionID string)
 	SetSkipRequests(skip bool)
 	SkipRequests() bool
@@ -68,9 +68,8 @@ type permissionService struct {
 	allowedTools          []string
 
 	// used to make sure we only process one request at a time
-	requestMu       sync.Mutex
-	activeRequest   *PermissionRequest
-	activeRequestMu sync.Mutex
+	requestMu     sync.Mutex
+	activeRequest *PermissionRequest
 }
 
 func (s *permissionService) GrantPersistent(permission PermissionRequest) {
@@ -87,11 +86,9 @@ func (s *permissionService) GrantPersistent(permission PermissionRequest) {
 	s.sessionPermissions = append(s.sessionPermissions, permission)
 	s.sessionPermissionsMu.Unlock()
 
-	s.activeRequestMu.Lock()
 	if s.activeRequest != nil && s.activeRequest.ID == permission.ID {
 		s.activeRequest = nil
 	}
-	s.activeRequestMu.Unlock()
 }
 
 func (s *permissionService) Grant(permission PermissionRequest) {
@@ -104,11 +101,9 @@ func (s *permissionService) Grant(permission PermissionRequest) {
 		respCh <- true
 	}
 
-	s.activeRequestMu.Lock()
 	if s.activeRequest != nil && s.activeRequest.ID == permission.ID {
 		s.activeRequest = nil
 	}
-	s.activeRequestMu.Unlock()
 }
 
 func (s *permissionService) Deny(permission PermissionRequest) {
@@ -122,16 +117,14 @@ func (s *permissionService) Deny(permission PermissionRequest) {
 		respCh <- false
 	}
 
-	s.activeRequestMu.Lock()
 	if s.activeRequest != nil && s.activeRequest.ID == permission.ID {
 		s.activeRequest = nil
 	}
-	s.activeRequestMu.Unlock()
 }
 
-func (s *permissionService) Request(ctx context.Context, opts CreatePermissionRequest) (bool, error) {
+func (s *permissionService) Request(opts CreatePermissionRequest) bool {
 	if s.skip {
-		return true, nil
+		return true
 	}
 
 	// tell the UI that a permission was requested
@@ -144,7 +137,7 @@ func (s *permissionService) Request(ctx context.Context, opts CreatePermissionRe
 	// Check if the tool/action combination is in the allowlist
 	commandKey := opts.ToolName + ":" + opts.Action
 	if slices.Contains(s.allowedTools, commandKey) || slices.Contains(s.allowedTools, opts.ToolName) {
-		return true, nil
+		return true
 	}
 
 	s.autoApproveSessionsMu.RLock()
@@ -152,11 +145,7 @@ func (s *permissionService) Request(ctx context.Context, opts CreatePermissionRe
 	s.autoApproveSessionsMu.RUnlock()
 
 	if autoApprove {
-		s.notificationBroker.Publish(pubsub.CreatedEvent, PermissionNotification{
-			ToolCallID: opts.ToolCallID,
-			Granted:    true,
-		})
-		return true, nil
+		return true
 	}
 
 	fileInfo, err := os.Stat(opts.Path)
@@ -187,18 +176,21 @@ func (s *permissionService) Request(ctx context.Context, opts CreatePermissionRe
 	for _, p := range s.sessionPermissions {
 		if p.ToolName == permission.ToolName && p.Action == permission.Action && p.SessionID == permission.SessionID && p.Path == permission.Path {
 			s.sessionPermissionsMu.RUnlock()
-			s.notificationBroker.Publish(pubsub.CreatedEvent, PermissionNotification{
-				ToolCallID: opts.ToolCallID,
-				Granted:    true,
-			})
-			return true, nil
+			return true
 		}
 	}
 	s.sessionPermissionsMu.RUnlock()
 
-	s.activeRequestMu.Lock()
+	s.sessionPermissionsMu.RLock()
+	for _, p := range s.sessionPermissions {
+		if p.ToolName == permission.ToolName && p.Action == permission.Action && p.SessionID == permission.SessionID && p.Path == permission.Path {
+			s.sessionPermissionsMu.RUnlock()
+			return true
+		}
+	}
+	s.sessionPermissionsMu.RUnlock()
+
 	s.activeRequest = &permission
-	s.activeRequestMu.Unlock()
 
 	respCh := make(chan bool, 1)
 	s.pendingRequests.Set(permission.ID, respCh)
@@ -207,12 +199,7 @@ func (s *permissionService) Request(ctx context.Context, opts CreatePermissionRe
 	// Publish the request
 	s.Publish(pubsub.CreatedEvent, permission)
 
-	select {
-	case <-ctx.Done():
-		return false, ctx.Err()
-	case granted := <-respCh:
-		return granted, nil
-	}
+	return <-respCh
 }
 
 func (s *permissionService) AutoApproveSession(sessionID string) {

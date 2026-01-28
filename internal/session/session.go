@@ -38,6 +38,7 @@ type Session struct {
 	SummaryMessageID string
 	Cost             float64
 	Todos            []Todo
+	Mode             string
 	CreatedAt        int64
 	UpdatedAt        int64
 }
@@ -45,6 +46,7 @@ type Session struct {
 type Service interface {
 	pubsub.Subscriber[Session]
 	Create(ctx context.Context, title string) (Session, error)
+	CreateWithMode(ctx context.Context, title, mode string) (Session, error)
 	CreateTitleSession(ctx context.Context, parentSessionID string) (Session, error)
 	CreateTaskSession(ctx context.Context, toolCallID, parentSessionID, title string) (Session, error)
 	Get(ctx context.Context, id string) (Session, error)
@@ -61,14 +63,21 @@ type Service interface {
 
 type service struct {
 	*pubsub.Broker[Session]
-	db *sql.DB
-	q  *db.Queries
+	q db.Querier
 }
 
 func (s *service) Create(ctx context.Context, title string) (Session, error) {
+	return s.CreateWithMode(ctx, title, "")
+}
+
+func (s *service) CreateWithMode(ctx context.Context, title, mode string) (Session, error) {
 	dbSession, err := s.q.CreateSession(ctx, db.CreateSessionParams{
 		ID:    uuid.New().String(),
 		Title: title,
+		Mode: sql.NullString{
+			String: mode,
+			Valid:  mode != "",
+		},
 	})
 	if err != nil {
 		return Session{}, err
@@ -84,6 +93,7 @@ func (s *service) CreateTaskSession(ctx context.Context, toolCallID, parentSessi
 		ID:              toolCallID,
 		ParentSessionID: sql.NullString{String: parentSessionID, Valid: true},
 		Title:           title,
+		Mode:            sql.NullString{Valid: false},
 	})
 	if err != nil {
 		return Session{}, err
@@ -98,6 +108,7 @@ func (s *service) CreateTitleSession(ctx context.Context, parentSessionID string
 		ID:              "title-" + parentSessionID,
 		ParentSessionID: sql.NullString{String: parentSessionID, Valid: true},
 		Title:           "Generate a title",
+		Mode:            sql.NullString{Valid: false},
 	})
 	if err != nil {
 		return Session{}, err
@@ -108,32 +119,14 @@ func (s *service) CreateTitleSession(ctx context.Context, parentSessionID string
 }
 
 func (s *service) Delete(ctx context.Context, id string) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("beginning transaction: %w", err)
-	}
-	defer tx.Rollback() //nolint:errcheck
-
-	qtx := s.q.WithTx(tx)
-
-	dbSession, err := qtx.GetSessionByID(ctx, id)
+	session, err := s.Get(ctx, id)
 	if err != nil {
 		return err
 	}
-	if err = qtx.DeleteSessionMessages(ctx, dbSession.ID); err != nil {
-		return fmt.Errorf("deleting session messages: %w", err)
+	err = s.q.DeleteSession(ctx, session.ID)
+	if err != nil {
+		return err
 	}
-	if err = qtx.DeleteSessionFiles(ctx, dbSession.ID); err != nil {
-		return fmt.Errorf("deleting session files: %w", err)
-	}
-	if err = qtx.DeleteSession(ctx, dbSession.ID); err != nil {
-		return fmt.Errorf("deleting session: %w", err)
-	}
-	if err = tx.Commit(); err != nil {
-		return fmt.Errorf("committing transaction: %w", err)
-	}
-
-	session := s.fromDBItem(dbSession)
 	s.Publish(pubsub.DeletedEvent, session)
 	event.SessionDeleted()
 	return nil
@@ -166,6 +159,10 @@ func (s *service) Save(ctx context.Context, session Session) (Session, error) {
 		Todos: sql.NullString{
 			String: todosJSON,
 			Valid:  todosJSON != "",
+		},
+		Mode: sql.NullString{
+			String: session.Mode,
+			Valid:  session.Mode != "",
 		},
 	})
 	if err != nil {
@@ -215,6 +212,7 @@ func (s service) fromDBItem(item db.Session) Session {
 		SummaryMessageID: item.SummaryMessageID.String,
 		Cost:             item.Cost,
 		Todos:            todos,
+		Mode:             item.Mode.String,
 		CreatedAt:        item.CreatedAt,
 		UpdatedAt:        item.UpdatedAt,
 	}
@@ -242,12 +240,11 @@ func unmarshalTodos(data string) ([]Todo, error) {
 	return todos, nil
 }
 
-func NewService(q *db.Queries, conn *sql.DB) Service {
+func NewService(q db.Querier) Service {
 	broker := pubsub.NewBroker[Session]()
 	return &service{
-		Broker: broker,
-		db:     conn,
-		q:      q,
+		broker,
+		q,
 	}
 }
 
