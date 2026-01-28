@@ -1812,7 +1812,7 @@ func (m *UI) View() tea.View {
 	v.AltScreen = true
 	v.BackgroundColor = m.com.Styles.Background
 	v.MouseMode = tea.MouseModeCellMotion
-	v.WindowTitle = "prepf " + home.Short(m.com.Config().WorkingDir())
+	v.WindowTitle = "langtut " + home.Short(m.com.Config().WorkingDir())
 
 	canvas := uv.NewScreenBuffer(m.width, m.height)
 	v.Cursor = m.Draw(canvas, canvas.Bounds())
@@ -2294,7 +2294,7 @@ func (m *UI) openEditor(value string) tea.Cmd {
 		return uiutil.ReportError(err)
 	}
 	cmd, err := editor.Command(
-		"prepf",
+		"langtut",
 		tmpfile.Name(),
 		editor.AtPosition(
 			m.textarea.Line()+1,
@@ -2989,7 +2989,7 @@ func (m *UI) copyChatHighlight() tea.Cmd {
 	)
 }
 
-// renderLogo renders the Prepf logo with the given styles and dimensions.
+// renderLogo renders the Langtut logo with the given styles and dimensions.
 func renderLogo(t *styles.Styles, compact bool, width int) string {
 	return logo.Render(version.Version, compact, logo.Opts{
 		FieldColor:   t.LogoFieldColor,

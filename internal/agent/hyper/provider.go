@@ -86,7 +86,7 @@ func New(opts ...Option) (fantasy.Provider, error) {
 		baseURL: BaseURL() + "/api/v1/fantasy",
 		name:    Name,
 		headers: map[string]string{
-			"x-prepf-id": event.GetID(),
+			"x-langtut-id": event.GetID(),
 		},
 		client: &http.Client{Timeout: 0}, // stream-safe
 	}

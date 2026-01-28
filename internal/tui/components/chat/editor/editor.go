@@ -111,7 +111,7 @@ func (m *editorCmp) openEditor(value string) tea.Cmd {
 		return util.ReportError(err)
 	}
 	cmd, err := editor.Command(
-		"prepf",
+		"langtut",
 		tmpfile.Name(),
 		editor.AtPosition(
 			m.textarea.Line()+1,
@@ -393,7 +393,7 @@ func (m *editorCmp) Update(msg tea.Msg) (util.Model, tea.Cmd) {
 			} else {
 				// We have image data from the clipboard
 				// Create a temporary file to store the clipboard image data
-				tempFile, err := os.CreateTemp("", "clipboard_image_prepf_*")
+				tempFile, err := os.CreateTemp("", "clipboard_image_langtut_*")
 				if err != nil {
 					return m, util.ReportError(err)
 				}

@@ -19,16 +19,16 @@ var runCmd = &cobra.Command{
 The prompt can be provided as arguments or piped from stdin.`,
 	Example: `
 # Run a simple prompt
-prepf run Explain the use of context in Go
+langtut run Explain the use of context in Go
 
 # Pipe input from stdin
-curl https://charm.land | prepf run "Summarize this website"
+curl https://charm.land | langtut run "Summarize this website"
 
 # Read from a file
-prepf run "What is this code doing?" <<< prrr.go
+langtut run "What is this code doing?" <<< prrr.go
 
 # Run in quiet mode (hide the spinner)
-prepf run --quiet "Generate a README for this project"
+langtut run --quiet "Generate a README for this project"
   `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		quiet, _ := cmd.Flags().GetBool("quiet")
@@ -46,7 +46,7 @@ prepf run --quiet "Generate a README for this project"
 		defer app.Shutdown()
 
 		if !app.Config().IsConfigured() {
-			return fmt.Errorf("no providers configured - please run 'prepf' to set up a provider interactively")
+			return fmt.Errorf("no providers configured - please run 'langtut' to set up a provider interactively")
 		}
 
 		prompt := strings.Join(args, " ")

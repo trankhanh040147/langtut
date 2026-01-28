@@ -388,9 +388,9 @@ func (a *appModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Update Available
 	case app.UpdateAvailableMsg:
 		// Show update notification in status bar
-		statusMsg := fmt.Sprintf("Prepf update available: v%s → v%s.", msg.CurrentVersion, msg.LatestVersion)
+		statusMsg := fmt.Sprintf("Langtut update available: v%s → v%s.", msg.CurrentVersion, msg.LatestVersion)
 		if msg.IsDevelopment {
-			statusMsg = fmt.Sprintf("This is a development version of Prepf. The latest version is v%s.", msg.LatestVersion)
+			statusMsg = fmt.Sprintf("This is a development version of Langtut. The latest version is v%s.", msg.LatestVersion)
 		}
 		s, statusCmd := a.status.Update(util.InfoMsg{
 			Type: util.InfoTypeUpdate,
@@ -593,7 +593,7 @@ func (a *appModel) View() tea.View {
 	view.AltScreen = true
 	view.MouseMode = tea.MouseModeCellMotion
 	view.BackgroundColor = t.BgBase
-	view.WindowTitle = "prepf " + home.Short(config.Get().WorkingDir())
+	view.WindowTitle = "langtut " + home.Short(config.Get().WorkingDir())
 	if a.wWidth < 25 || a.wHeight < 15 {
 		view.Content = t.S().Base.Width(a.wWidth).Height(a.wHeight).
 			Align(lipgloss.Center, lipgloss.Center).

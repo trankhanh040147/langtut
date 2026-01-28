@@ -53,7 +53,12 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 - [ ] **"Stop-and-Fix" Mechanic:** - If a specific sentence contains a critical error, the AI prompts a "Quick Fix" before proceeding to the next question.
 - [ ] **Knowledge Injection (End-of-Session):**
   - [ ] **Auto-Summarizer:** Generates `session_report_<date>.md` with mistakes vs. corrections.
-  - [ ] **Vocab Harvester:** Parses "Golden Phrases" (native-like expressions suggested by AI) and presents an interactive checklist to `[Add to Library]`. (deferred to v0.?)
+  - [ ] **Vocab Harvester:** Parses "Golden Phrases" (native-like expressions suggested by AI) and presents an interactive checklist to `[Add to Library]`.
+
+**Notes**
+- One mode = one persona/prompt template
+- User can choose mode in each new session
+- Use existed components to develop the feature. Avoid writing new codes/components as possible
 
 ---
 

@@ -104,7 +104,7 @@ func NewDownloadTool(permissions permission.Service, workingDir string, client *
 				return fantasy.ToolResponse{}, fmt.Errorf("failed to create request: %w", err)
 			}
 
-			req.Header.Set("User-Agent", "prepf/1.0")
+			req.Header.Set("User-Agent", "langtut/1.0")
 
 			resp, err := client.Do(req)
 			if err != nil {

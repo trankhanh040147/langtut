@@ -41,8 +41,8 @@ func cachePathFor(name string) string {
 	}
 
 	// return the path to the main data directory
-	// for windows, it should be in `%LOCALAPPDATA%/prepf/`
-	// for linux and macOS, it should be in `$HOME/.local/share/prepf/`
+	// for windows, it should be in `%LOCALAPPDATA%/langtut/`
+	// for linux and macOS, it should be in `$HOME/.local/share/langtut/`
 	if runtime.GOOS == "windows" {
 		localAppData := os.Getenv("LOCALAPPDATA")
 		if localAppData == "" {
@@ -158,7 +158,7 @@ func Providers(cfg *Config) ([]catwalk.Provider, error) {
 			items, err := catwalkSyncer.Get(ctx)
 			if err != nil {
 				catwalkURL := fmt.Sprintf("%s/v2/providers", cmp.Or(os.Getenv("CATWALK_URL"), defaultCatwalkURL))
-				errs = append(errs, fmt.Errorf("Prepf was unable to fetch an updated list of providers from %s. Consider setting PREPF_DISABLE_PROVIDER_AUTO_UPDATE=1 to use the embedded providers bundled at the time of this Prepf release. You can also update providers manually. For more info see prepf update-providers --help.\n\nCause: %w", catwalkURL, providerErr)) //nolint:staticcheck
+				errs = append(errs, fmt.Errorf("Langtut was unable to fetch an updated list of providers from %s. Consider setting PREPF_DISABLE_PROVIDER_AUTO_UPDATE=1 to use the embedded providers bundled at the time of this Langtut release. You can also update providers manually. For more info see langtut update-providers --help.\n\nCause: %w", catwalkURL, providerErr)) //nolint:staticcheck
 				return
 			}
 			providers.Append(items...)
@@ -173,7 +173,7 @@ func Providers(cfg *Config) ([]catwalk.Provider, error) {
 
 			item, err := hyperSyncer.Get(ctx)
 			if err != nil {
-				errs = append(errs, fmt.Errorf("Prepf was unable to fetch updated information from Hyper: %w", err)) //nolint:staticcheck
+				errs = append(errs, fmt.Errorf("Langtut was unable to fetch updated information from Hyper: %w", err)) //nolint:staticcheck
 				return
 			}
 			providers.Append(item)

@@ -13,18 +13,18 @@ import (
 
 var dirsCmd = &cobra.Command{
 	Use:   "dirs",
-	Short: "Print directories used by Prepf",
-	Long: `Print the directories where Prepf stores its configuration and data files.
+	Short: "Print directories used by Langtut",
+	Long: `Print the directories where Langtut stores its configuration and data files.
 This includes the global configuration directory and data directory.`,
 	Example: `
 # Print all directories
-prepf dirs
+langtut dirs
 
 # Print only the config directory
-prepf dirs config
+langtut dirs config
 
 # Print only the data directory
-prepf dirs data
+langtut dirs data
   `,
 	Run: func(cmd *cobra.Command, args []string) {
 		if term.IsTerminal(os.Stdout.Fd()) {
@@ -47,7 +47,7 @@ prepf dirs data
 
 var configDirCmd = &cobra.Command{
 	Use:   "config",
-	Short: "Print the configuration directory used by Prepf",
+	Short: "Print the configuration directory used by Langtut",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println(filepath.Dir(config.GlobalConfig()))
 	},
@@ -55,7 +55,7 @@ var configDirCmd = &cobra.Command{
 
 var dataDirCmd = &cobra.Command{
 	Use:   "data",
-	Short: "Print the datauration directory used by Prepf",
+	Short: "Print the datauration directory used by Langtut",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Println(filepath.Dir(config.GlobalConfigData()))
 	},

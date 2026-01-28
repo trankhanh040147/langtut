@@ -103,7 +103,7 @@ func buildCommandSources(cfg *config.Config) []commandSource {
 	// Home directory
 	if home := home.Dir(); home != "" {
 		sources = append(sources, commandSource{
-			path:   filepath.Join(home, ".prepf", "commands"),
+			path:   filepath.Join(home, ".langtut", "commands"),
 			prefix: userCommandPrefix,
 		})
 	}
@@ -211,7 +211,7 @@ func getXDGCommandsDir() string {
 		}
 	}
 	if xdgHome != "" {
-		return filepath.Join(xdgHome, "prepf", "commands")
+		return filepath.Join(xdgHome, "langtut", "commands")
 	}
 	return ""
 }

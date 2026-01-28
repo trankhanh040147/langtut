@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPrepfIgnore(t *testing.T) {
+func TestLangtutIgnore(t *testing.T) {
 	tempDir := t.TempDir()
 	t.Chdir(tempDir)
 
@@ -17,8 +17,8 @@ func TestPrepfIgnore(t *testing.T) {
 	require.NoError(t, os.WriteFile("test2.log", []byte("test"), 0o644))
 	require.NoError(t, os.WriteFile("test3.tmp", []byte("test"), 0o644))
 
-	// Create a .prepfignore file that ignores .log files
-	require.NoError(t, os.WriteFile(".prepfignore", []byte("*.log\n"), 0o644))
+	// Create a .langtutignore file that ignores .log files
+	require.NoError(t, os.WriteFile(".langtutignore", []byte("*.log\n"), 0o644))
 
 	dl := NewDirectoryLister(tempDir)
 	require.True(t, dl.shouldIgnore("test2.log", nil), ".log files should be ignored")
@@ -50,16 +50,16 @@ func TestShouldExcludeFile(t *testing.T) {
 		t.Fatalf("Failed to create .gitignore: %v", err)
 	}
 
-	// Create .prepfignore file
-	prepfignoreContent := "custom_ignored/\n"
-	if err := os.WriteFile(filepath.Join(tempDir, ".prepfignore"), []byte(prepfignoreContent), 0o644); err != nil {
-		t.Fatalf("Failed to create .prepfignore: %v", err)
+	// Create .langtutignore file
+	langtutignoreContent := "custom_ignored/\n"
+	if err := os.WriteFile(filepath.Join(tempDir, ".langtutignore"), []byte(langtutignoreContent), 0o644); err != nil {
+		t.Fatalf("Failed to create .langtutignore: %v", err)
 	}
 
 	// Test that ignored directories are properly ignored
 	require.True(t, ShouldExcludeFile(tempDir, nodeModules), "Expected node_modules to be ignored by .gitignore")
 	require.True(t, ShouldExcludeFile(tempDir, target), "Expected target to be ignored by .gitignore")
-	require.True(t, ShouldExcludeFile(tempDir, customIgnored), "Expected custom_ignored to be ignored by .prepfignore")
+	require.True(t, ShouldExcludeFile(tempDir, customIgnored), "Expected custom_ignored to be ignored by .langtutignore")
 
 	// Test that normal directories are not ignored
 	require.False(t, ShouldExcludeFile(tempDir, normalDir), "Expected src directory to not be ignored")
@@ -84,14 +84,14 @@ func TestShouldExcludeFileHierarchical(t *testing.T) {
 		}
 	}
 
-	// Create .prepfignore in subdir that ignores normal_nested
-	subPrepfignore := "normal_nested/\n"
-	if err := os.WriteFile(filepath.Join(subDir, ".prepfignore"), []byte(subPrepfignore), 0o644); err != nil {
-		t.Fatalf("Failed to create subdir .prepfignore: %v", err)
+	// Create .langtutignore in subdir that ignores normal_nested
+	subLangtutignore := "normal_nested/\n"
+	if err := os.WriteFile(filepath.Join(subDir, ".langtutignore"), []byte(subLangtutignore), 0o644); err != nil {
+		t.Fatalf("Failed to create subdir .langtutignore: %v", err)
 	}
 
-	// Test hierarchical ignore behavior - this should work because the .prepfignore is in the parent directory
-	require.True(t, ShouldExcludeFile(tempDir, nestedNormal), "Expected normal_nested to be ignored by subdir .prepfignore")
+	// Test hierarchical ignore behavior - this should work because the .langtutignore is in the parent directory
+	require.True(t, ShouldExcludeFile(tempDir, nestedNormal), "Expected normal_nested to be ignored by subdir .langtutignore")
 	require.False(t, ShouldExcludeFile(tempDir, subDir), "Expected subdir itself to not be ignored")
 }
 

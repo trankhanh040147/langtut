@@ -21,16 +21,16 @@ import (
 var loginCmd = &cobra.Command{
 	Aliases: []string{"auth"},
 	Use:     "login [platform]",
-	Short:   "Login Prepf to a platform",
-	Long: `Login Prepf to a specified platform.
+	Short:   "Login Langtut to a platform",
+	Long: `Login Langtut to a specified platform.
 The platform should be provided as an argument.
 Available platforms are: hyper, copilot.`,
 	Example: `
 # Authenticate with Charm Hyper
-prepf login
+langtut login
 
 # Authenticate with GitHub Copilot
-prepf login copilot
+langtut login copilot
   `,
 	ValidArgs: []cobra.Completion{
 		"hyper",

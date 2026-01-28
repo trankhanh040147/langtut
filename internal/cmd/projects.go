@@ -14,13 +14,13 @@ import (
 var projectsCmd = &cobra.Command{
 	Use:   "projects",
 	Short: "List project directories",
-	Long:  "List directories where Prepf project data is known to exist",
+	Long:  "List directories where Langtut project data is known to exist",
 	Example: `
 # List all projects in a table
-prepf projects
+langtut projects
 
 # Output projects data as JSON
-prepf projects --json
+langtut projects --json
   `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jsonOutput, _ := cmd.Flags().GetBool("json")

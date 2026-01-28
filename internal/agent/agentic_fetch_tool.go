@@ -97,7 +97,7 @@ func (c *coordinator) agenticFetchTool(_ context.Context, client *http.Client) (
 				return fantasy.ToolResponse{}, permission.ErrorPermissionDenied
 			}
 
-			tmpDir, err := os.MkdirTemp(c.cfg.Options.DataDirectory, "prepf-fetch-*")
+			tmpDir, err := os.MkdirTemp(c.cfg.Options.DataDirectory, "langtut-fetch-*")
 			if err != nil {
 				return fantasy.NewTextErrorResponse(fmt.Sprintf("Failed to create temporary directory: %s", err)), nil
 			}

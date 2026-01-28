@@ -201,7 +201,7 @@ func SelectableButtonsVertical(buttons []ButtonOpts, spacing int) string {
 func DiffFormatter() *diffview.DiffView {
 	t := styles.CurrentTheme()
 	formatDiff := diffview.New()
-	style := chroma.MustNewStyle("prepf", styles.GetChromaTheme())
+	style := chroma.MustNewStyle("langtut", styles.GetChromaTheme())
 	diff := formatDiff.ChromaStyle(style).Style(t.S().Diff).TabWidth(4)
 	return diff
 }

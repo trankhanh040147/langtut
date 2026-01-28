@@ -37,17 +37,17 @@ tasks:
   build:
     desc: Run build
     vars:
-      LDFLAGS: '{{if .VERSION}}-ldflags="-X github.com/charmbracelet/prepf/internal/version.Version={{.VERSION}}"{{end}}'
+      LDFLAGS: '{{if .VERSION}}-ldflags="-X github.com/charmbracelet/langtut/internal/version.Version={{.VERSION}}"{{end}}'
     cmds:
       - "go build {{if .RACE}}-race{{end}} {{.LDFLAGS}} ."
     generates:
-      - prepf
+      - langtut
 
   run:
     desc: Run build
     cmds:
       - task: build
-      - "./prepf {{.CLI_ARGS}} {{if .RACE}}2>race.log{{end}}"
+      - "./langtut {{.CLI_ARGS}} {{if .RACE}}2>race.log{{end}}"
 
   test:
     desc: Run tests
@@ -81,7 +81,7 @@ tasks:
   install:
     desc: Install the application
     vars:
-      LDFLAGS: '{{if .VERSION}}-ldflags="-X github.com/charmbracelet/prepf/internal/version.Version={{.VERSION}}"{{end}}'
+      LDFLAGS: '{{if .VERSION}}-ldflags="-X github.com/charmbracelet/langtut/internal/version.Version={{.VERSION}}"{{end}}'
     cmds:
       - task: fetch-tags
       - go install {{.LDFLAGS}} -v .

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/charmbracelet/prepf/internal/config/config",
+  "$id": "https://github.com/charmbracelet/langtut/internal/config/config",
   "$ref": "#/$defs/Config",
   "$defs": {
     "Attribution": {
@@ -22,7 +22,7 @@
         },
         "generated_with": {
           "type": "boolean",
-          "description": "Add Generated with Prepf line to commit messages and issues and PRs",
+          "description": "Add Generated with Langtut line to commit messages and issues and PRs",
           "default": true
         }
       },
@@ -361,7 +361,7 @@
           "items": {
             "type": "string",
             "examples": [
-              "~/.config/prepf/skills",
+              "~/.config/langtut/skills",
               "./skills"
             ]
           },
@@ -390,9 +390,9 @@
         "data_directory": {
           "type": "string",
           "description": "Directory for storing application data (relative to working directory)",
-          "default": ".prepf",
+          "default": ".langtut",
           "examples": [
-            ".prepf"
+            ".langtut"
           ]
         },
         "disabled_tools": {

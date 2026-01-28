@@ -1,5 +1,5 @@
 // Package mcp provides functionality for managing Model Context Protocol (MCP)
-// clients within the Prepf application.
+// clients within the Langtut application.
 package mcp
 
 import (
@@ -285,9 +285,9 @@ func createSession(ctx context.Context, name string, m config.MCPConfig, resolve
 
 	client := mcp.NewClient(
 		&mcp.Implementation{
-			Name:    "prepf",
+			Name:    "langtut",
 			Version: version.Version,
-			Title:   "Prepf",
+			Title:   "Langtut",
 		},
 		&mcp.ClientOptions{
 			ToolListChangedHandler: func(context.Context, *mcp.ToolListChangedRequest) {

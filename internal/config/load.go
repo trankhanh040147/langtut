@@ -89,7 +89,7 @@ func Load(workingDir, dataDir string, debug bool) (*Config, error) {
 	return cfg, nil
 }
 
-func PushPopPrepfEnv() func() {
+func PushPopLangtutEnv() func() {
 	found := []string{}
 	for _, ev := range os.Environ() {
 		if strings.HasPrefix(ev, "PREPF_") {
@@ -119,7 +119,7 @@ func PushPopPrepfEnv() func() {
 
 func (c *Config) configureProviders(env env.Env, resolver VariableResolver, knownProviders []catwalk.Provider) error {
 	knownProviderNames := make(map[string]bool)
-	restore := PushPopPrepfEnv()
+	restore := PushPopLangtutEnv()
 	defer restore()
 
 	// When disable_default_providers is enabled, skip all default/embedded
@@ -718,8 +718,8 @@ func hasAWSCredentials(env env.Env) bool {
 
 // GlobalConfig returns the global configuration file path for the application.
 func GlobalConfig() string {
-	if prepfGlobal := os.Getenv("PREPF_GLOBAL_CONFIG"); prepfGlobal != "" {
-		return filepath.Join(prepfGlobal, fmt.Sprintf("%s.json", appName))
+	if langtutGlobal := os.Getenv("PREPF_GLOBAL_CONFIG"); langtutGlobal != "" {
+		return filepath.Join(langtutGlobal, fmt.Sprintf("%s.json", appName))
 	}
 	if xdgConfigHome := os.Getenv("XDG_CONFIG_HOME"); xdgConfigHome != "" {
 		return filepath.Join(xdgConfigHome, appName, fmt.Sprintf("%s.json", appName))
@@ -730,16 +730,16 @@ func GlobalConfig() string {
 // GlobalConfigData returns the path to the main data directory for the application.
 // this config is used when the app overrides configurations instead of updating the global config.
 func GlobalConfigData() string {
-	if prepfData := os.Getenv("PREPF_GLOBAL_DATA"); prepfData != "" {
-		return filepath.Join(prepfData, fmt.Sprintf("%s.json", appName))
+	if langtutData := os.Getenv("PREPF_GLOBAL_DATA"); langtutData != "" {
+		return filepath.Join(langtutData, fmt.Sprintf("%s.json", appName))
 	}
 	if xdgDataHome := os.Getenv("XDG_DATA_HOME"); xdgDataHome != "" {
 		return filepath.Join(xdgDataHome, appName, fmt.Sprintf("%s.json", appName))
 	}
 
 	// return the path to the main data directory
-	// for windows, it should be in `%LOCALAPPDATA%/prepf/`
-	// for linux and macOS, it should be in `$HOME/.local/share/prepf/`
+	// for windows, it should be in `%LOCALAPPDATA%/langtut/`
+	// for linux and macOS, it should be in `$HOME/.local/share/langtut/`
 	if runtime.GOOS == "windows" {
 		localAppData := cmp.Or(
 			os.Getenv("LOCALAPPDATA"),
@@ -770,8 +770,8 @@ func isInsideWorktree() bool {
 // Skills in these directories are auto-discovered and their files can be read
 // without permission prompts.
 func GlobalSkillsDirs() []string {
-	if prepfSkills := os.Getenv("PREPF_SKILLS_DIR"); prepfSkills != "" {
-		return []string{prepfSkills}
+	if langtutSkills := os.Getenv("PREPF_SKILLS_DIR"); langtutSkills != "" {
+		return []string{langtutSkills}
 	}
 
 	// Determine the base config directory.

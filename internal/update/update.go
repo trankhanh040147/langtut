@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	githubApiUrl = "https://api.github.com/repos/charmbracelet/prepf/releases/latest"
-	userAgent    = "prepf/1.0"
+	githubApiUrl = "https://api.github.com/repos/charmbracelet/langtut/releases/latest"
+	userAgent    = "langtut/1.0"
 )
 
 // Default is the default [Client].

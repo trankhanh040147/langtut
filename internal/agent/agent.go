@@ -1,4 +1,4 @@
-// Package agent is the core orchestration layer for Prepf AI agents.
+// Package agent is the core orchestration layer for Langtut AI agents.
 //
 // It provides session-based AI agent functionality for managing
 // conversations, tool execution, and message handling. It coordinates

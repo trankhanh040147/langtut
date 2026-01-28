@@ -19,10 +19,10 @@ var modelsCmd = &cobra.Command{
 	Short: "List all available models from configured providers",
 	Long:  `List all available models from configured providers. Shows provider name and model IDs.`,
 	Example: `# List all available models
-prepf models
+langtut models
 
 # Search models
-prepf models gpt5`,
+langtut models gpt5`,
 	Args: cobra.ArbitraryArgs,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cwd, err := ResolveCwd(cmd)
@@ -39,7 +39,7 @@ prepf models gpt5`,
 		}
 
 		if !cfg.IsConfigured() {
-			return fmt.Errorf("no providers configured - please run 'prepf' to set up a provider interactively")
+			return fmt.Errorf("no providers configured - please run 'langtut' to set up a provider interactively")
 		}
 
 		term := strings.ToLower(strings.Join(args, " "))

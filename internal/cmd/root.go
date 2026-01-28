@@ -38,7 +38,7 @@ var kittyTerminals = []string{"alacritty", "ghostty", "kitty", "rio", "wezterm"}
 
 func init() {
 	rootCmd.PersistentFlags().StringP("cwd", "c", "", "Current working directory")
-		rootCmd.PersistentFlags().StringP("data-dir", "D", "", "Custom prepf data directory")
+	rootCmd.PersistentFlags().StringP("data-dir", "D", "", "Custom langtut data directory")
 	rootCmd.PersistentFlags().BoolP("debug", "d", false, "Debug")
 	rootCmd.Flags().BoolP("help", "h", false, "Help")
 	rootCmd.Flags().BoolP("yolo", "y", false, "Automatically accept all permissions (dangerous mode)")
@@ -56,30 +56,30 @@ func init() {
 }
 
 var rootCmd = &cobra.Command{
-	Use:   "prepf",
+	Use:   "langtut",
 	Short: "An AI assistant for software development",
 	Long:  "An AI assistant for software development and similar tasks with direct access to the terminal",
 	Example: `
 # Run in interactive mode
-prepf
+langtut
 
 # Run with debug logging
-prepf -d
+langtut -d
 
 # Run with debug logging in a specific directory
-prepf -d -c /path/to/project
+langtut -d -c /path/to/project
 
 # Run with custom data directory
-prepf -D /path/to/custom/.prepf
+langtut -D /path/to/custom/.langtut
 
 # Print version
-prepf -v
+langtut -v
 
 # Run a single non-interactive prompt
-prepf run "Explain the use of context in Go"
+langtut run "Explain the use of context in Go"
 
 # Run in dangerous mode (auto-accept all permissions)
-prepf -y
+langtut -y
   `,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		app, err := setupAppWithProgressBar(cmd)
@@ -115,7 +115,7 @@ prepf -y
 		if _, err := program.Run(); err != nil {
 			event.Error(err)
 			slog.Error("TUI run error", "error", err)
-			return errors.New("Prepf crashed. If metrics are enabled, we were notified about it. If you'd like to report it, please copy the stacktrace above and open an issue at https://github.com/charmbracelet/prepf/issues/new?template=bug.yml") //nolint:staticcheck
+			return errors.New("Langtut crashed. If metrics are enabled, we were notified about it. If you'd like to report it, please copy the stacktrace above and open an issue at https://github.com/charmbracelet/langtut/issues/new?template=bug.yml") //nolint:staticcheck
 		}
 		return nil
 	},
@@ -211,7 +211,7 @@ func setupApp(cmd *cobra.Command) (*app.App, error) {
 	}
 	cfg.Permissions.SkipRequests = yolo
 
-		if err := createDotPrepfDir(cfg.Options.DataDirectory); err != nil {
+	if err := createDotLangtutDir(cfg.Options.DataDirectory); err != nil {
 		return nil, err
 	}
 
@@ -288,7 +288,7 @@ func ResolveCwd(cmd *cobra.Command) (string, error) {
 	return cwd, nil
 }
 
-func createDotPrepfDir(dir string) error {
+func createDotLangtutDir(dir string) error {
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return fmt.Errorf("failed to create data directory: %q %w", dir, err)
 	}
