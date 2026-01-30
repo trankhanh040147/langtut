@@ -23,6 +23,12 @@ var vocabPromptTmpl []byte
 //go:embed templates/writing-tutor.md.tpl
 var writingTutorPromptTmpl []byte
 
+//go:embed templates/refine.md.tpl
+var refinePromptTmpl []byte
+
+//go:embed templates/fluency.md.tpl
+var fluencyPromptTmpl []byte
+
 func coderPrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
 	systemPrompt, err := prompt.NewPrompt("coder", string(coderPromptTmpl), opts...)
 	if err != nil {
@@ -57,6 +63,22 @@ func vocabPrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
 
 func writingTutorPrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
 	systemPrompt, err := prompt.NewPrompt("writing-tutor", string(writingTutorPromptTmpl), opts...)
+	if err != nil {
+		return nil, err
+	}
+	return systemPrompt, nil
+}
+
+func refinePrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
+	systemPrompt, err := prompt.NewPrompt("refine", string(refinePromptTmpl), opts...)
+	if err != nil {
+		return nil, err
+	}
+	return systemPrompt, nil
+}
+
+func fluencyPrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
+	systemPrompt, err := prompt.NewPrompt("fluency", string(fluencyPromptTmpl), opts...)
 	if err != nil {
 		return nil, err
 	}

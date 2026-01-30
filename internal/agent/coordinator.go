@@ -120,6 +120,10 @@ func (c *coordinator) getPromptForMode(mode string) (*prompt.Prompt, error) {
 		p, err = vocabPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
 	case "writing-tutor":
 		p, err = writingTutorPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
+	case "refine":
+		p, err = refinePrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
+	case "fluency":
+		p, err = fluencyPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
 	default:
 		p, err = coderPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
 	}

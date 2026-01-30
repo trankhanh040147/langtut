@@ -45,10 +45,10 @@ func Render(version string, compact bool, o Opts) string {
 	const spacing = 1
 	letterforms := []letterform{
 		letterP,
-		letterR,
-		letterE,
-		letterP,
-		letterF,
+		//letterR,
+		//letterE,
+		//letterP,
+		//letterF,
 	}
 	stretchIndex := -1 // -1 means no stretching.
 	if !compact {

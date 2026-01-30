@@ -27,13 +27,23 @@ type ModeOption struct {
 var (
 	ModeVocab = ModeOption{
 		ID:   "vocab",
-		Name: "Vocab (English Learning)",
-		Desc: "Let's learn vocabulary!",
+		Name: "📚 Vocab Builder",
+		Desc: "Master new words through context & active recall.",
 	}
 	ModeWritingTutor = ModeOption{
 		ID:   "writing-tutor",
-		Name: "Writing Tutor (English Writing)",
-		Desc: "Let's learn how to write english!",
+		Name: "🎓 Writing Coach",
+		Desc: "Interactive exercises to improve your grammar & style.",
+	}
+	ModeRefine = ModeOption{
+		ID:   "refine",
+		Name: "✨ Instant Refine",
+		Desc: "Polish drafts, fix grammar, and upgrade your tone.",
+	}
+	ModeFluency = ModeOption{
+		ID:   "fluency",
+		Name: "🗣️ Fluency Coach",
+		Desc: "Natural conversation with instant critique on logic & tone.",
 	}
 )
 
@@ -53,7 +63,7 @@ func NewModeDialogCmp() ModeDialog {
 	help := help.New()
 	help.Styles = t.S().Help
 
-	options := []ModeOption{ModeVocab, ModeWritingTutor}
+	options := []ModeOption{ModeRefine, ModeWritingTutor, ModeVocab, ModeFluency}
 
 	s := &modeDialogCmp{
 		selectedIndex: 0,
