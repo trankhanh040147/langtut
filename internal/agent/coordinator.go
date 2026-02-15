@@ -124,6 +124,8 @@ func (c *coordinator) getPromptForMode(mode string) (*prompt.Prompt, error) {
 		p, err = refinePrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
 	case "fluency":
 		p, err = fluencyPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
+	case "book-recall":
+		p, err = bookRecallPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
 	default:
 		p, err = coderPrompt(prompt.WithWorkingDir(c.cfg.WorkingDir()))
 	}

@@ -45,6 +45,11 @@ var (
 		Name: "🗣️ Fluency Coach",
 		Desc: "Natural conversation with instant critique on logic & tone.",
 	}
+	ModeBookRecall = ModeOption{
+		ID:   "book-recall",
+		Name: "🧠 Book Recall",
+		Desc: "Test your memory & discuss themes without spoilers.",
+	}
 )
 
 type modeDialogCmp struct {
@@ -63,7 +68,7 @@ func NewModeDialogCmp() ModeDialog {
 	help := help.New()
 	help.Styles = t.S().Help
 
-	options := []ModeOption{ModeRefine, ModeWritingTutor, ModeVocab, ModeFluency}
+	options := []ModeOption{ModeRefine, ModeWritingTutor, ModeVocab, ModeFluency, ModeBookRecall}
 
 	s := &modeDialogCmp{
 		selectedIndex: 0,

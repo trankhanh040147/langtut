@@ -29,6 +29,9 @@ var refinePromptTmpl []byte
 //go:embed templates/fluency.md.tpl
 var fluencyPromptTmpl []byte
 
+//go:embed templates/book-recall.md.tpl
+var bookRecallPromptTmpl []byte
+
 func coderPrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
 	systemPrompt, err := prompt.NewPrompt("coder", string(coderPromptTmpl), opts...)
 	if err != nil {
@@ -79,6 +82,14 @@ func refinePrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
 
 func fluencyPrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
 	systemPrompt, err := prompt.NewPrompt("fluency", string(fluencyPromptTmpl), opts...)
+	if err != nil {
+		return nil, err
+	}
+	return systemPrompt, nil
+}
+
+func bookRecallPrompt(opts ...prompt.Option) (*prompt.Prompt, error) {
+	systemPrompt, err := prompt.NewPrompt("book-recall", string(bookRecallPromptTmpl), opts...)
 	if err != nil {
 		return nil, err
 	}
