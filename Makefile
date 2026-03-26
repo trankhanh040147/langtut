@@ -4,12 +4,12 @@ MAIN_PACKAGE=.
 GO=go
 
 # Build info
-VERSION?=0.2.0
+VERSION?=0.1.0
 BUILD_TIME=$(shell date -u '+%Y-%m-%d_%H:%M:%S')
 GIT_COMMIT=$(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
 
 # Linker flags
-LDFLAGS=-ldflags "-X main.Version=$(VERSION) -X main.BuildTime=$(BUILD_TIME) -X main.GitCommit=$(GIT_COMMIT)"
+LDFLAGS=-ldflags "-X github.com/trankhanh040147/langtut/internal/cli.Version=$(VERSION) -X github.com/trankhanh040147/langtut/internal/cli.BuildTime=$(BUILD_TIME) -X github.com/trankhanh040147/langtut/internal/cli.GitCommit=$(GIT_COMMIT)"
 
 .PHONY: all build run clean test lint install uninstall reinstall help
 
@@ -38,7 +38,7 @@ review-staged:
 
 ## install: Install to $GOPATH/bin
 install:
-	$(GO) build $(LDFLAGS) -o $(shell go env GOPATH)/bin/$(BINARY_NAME) $(MAIN_PACKAGE)
+	$(GO) install $(LDFLAGS) $(MAIN_PACKAGE)
 
 ## uninstall: Remove from $GOPATH/bin
 uninstall:
@@ -62,6 +62,11 @@ lint:
 	$(GO) vet ./...
 	@which golangci-lint > /dev/null || echo "golangci-lint not installed"
 	@which golangci-lint > /dev/null && golangci-lint run ./...
+
+## vulncheck: Check for known vulnerabilities in dependencies
+vulncheck:
+	@which govulncheck > /dev/null || (echo "govulncheck not installed. Install with: go install golang.org/x/vuln/cmd/govulncheck@latest" && exit 1)
+	govulncheck ./...
 
 ## fmt: Format code
 fmt:

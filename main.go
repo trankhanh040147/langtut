@@ -1,17 +1,24 @@
 package main
 
 import (
-	"fmt"
+	"log/slog"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
-	"github.com/trankhanh040147/langtut/internal/cli"
+	_ "github.com/joho/godotenv/autoload"
+	"github.com/trankhanh040147/langtut/internal/cmd"
 )
 
 func main() {
-	cli.InitRoot()
-	if err := cli.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
+	if os.Getenv("PREPF_PROFILE") != "" {
+		go func() {
+			slog.Info("Serving pprof at localhost:6060")
+			if httpErr := http.ListenAndServe("localhost:6060", nil); httpErr != nil {
+				slog.Error("Failed to pprof listen", "error", httpErr)
+			}
+		}()
 	}
-}
 
+	cmd.Execute()
+}

@@ -36,32 +36,145 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 
 ---
 
-# v0.1.0 - Foundation + Vocabulary Module
+# v0.1.0 - Writing Tutor Mode
 
-**Status:** In Progress
+**Status:** Implemented ✓
+
+**Scope:** Minimal changes - prompt templates and UI dialogs only. No database modifications.
 
 **Features:**
 
-### Foundation
-- [x] Cobra CLI framework
-- [x] Interactive TUI with Bubbletea
-- [x] AI API client (Gemini) with streaming
-- [x] Config: `~/.config/langtut/config.yaml`
-- [x] Preset system for custom prompts
+- [x] **Session Flow:**
+  - User opens command palette → "Select Mode" → mode selection dialog → topic input dialog (empty = random) → AI acts as Examiner
+  - User answers in text, receives feedback after each response
+- [x] **Feedback Engine:**
+  - Immediate markdown feedback analyzing:
+    - *Lexical Range:* Repeated words, C1 synonym suggestions
+    - *Grammar:* Tense inconsistencies, errors
+    - *Coherence:* Linking words, flow
+  - Band score estimate per response (AI rates using rubric dimensions in prompt template)
+- [x] **Stop-and-Fix:** AI prompts user to fix critical errors using current UI (no modal)
+- [x] **End-of-Session:**
+  - User types "end session" → AI generates session summary + Golden Phrases vocab list in markdown
+
+**Implementation Details:**
+
+| Component | File | Notes |
+|-----------|------|-------|
+| Prompt Template | `internal/agent/templates/writing-tutor.tpl` | IELTS rubric, feedback protocol, end-session vocab |
+| Prompt Function | `internal/agent/prompts.go` | `WritingTutorPrompt(topic string)` |
+| Mode Dialog | `internal/ui/dialog/modes.go` | Writing Tutor / Coder selection |
+| Topic Dialog | `internal/ui/dialog/topic_input.go` | Text input, empty = random topic |
+| Actions | `internal/ui/dialog/actions.go` | `ActionSelectMode`, `ActionTopicInput` |
+| Coordinator | `internal/agent/coordinator.go` | Added `SetSystemPrompt()` to interface |
+| UI Flow | `internal/ui/model/ui.go` | Mode state, dialog handlers, end-session detection |
+| Commands | `internal/ui/dialog/commands.go` | "Select Mode" in command palette |
+
+**User Flow:**
+1. Open command palette (ctrl+k)
+2. Select "Select Mode"
+3. Choose "Writing Tutor"
+4. Enter topic (or leave empty for random)
+5. AI starts session as examiner
+6. Type responses, receive feedback
+7. Type "end session" to get summary + vocab list
+
+**Known Limitations:**
+- Mode state stored in UI only (not persisted to database)
+- No keymap for end session (text command only)
+- Coder mode in dialog just clears session (no special behavior)
+
+**Deferred to v0.1.1:**
+
+- **Database Schema:**
+  - Add `mode` field to `sessions` table (e.g., "writing_tutor_ielts")
+  - Add `metadata` JSON field to `sessions` for drill-specific data
+  - Create `feedback` table for structured feedback storage (or extend `messages`)
+  - Add `band_score` field to sessions/messages
+  - Create `vocab_phrases` table (or store in session metadata)
+- **Structured Feedback Format:**
+  - Define JSON schema for machine-processable feedback
+  - Sentence-level issue tracking (type, severity, position)
+  - Store structured data vs. markdown-only
+- **Session Metadata Tracking:**
+  - Question type tracking (Part 1/2/3, Task 1/2)
+  - Difficulty progression per session
+  - Time tracking per question
+- **UI Enhancements:**
+  - Interactive vocab harvester: Bubbletea checklist dialog at end of session
+  - Stop-and-Fix modal editor for sentence editing
+  - Diff-style visualization for feedback
+  - Session report file generation (`session_report_<date>.md`)
+  - End session keymap (ctrl+e or similar)
+- **Rubric Implementation:**
+  - Move rubric dimensions from prompt to structured system
+  - Calibration mechanism (reference essays, human-labeled examples)
+  - Confidence intervals for band scores
+  - Explicit rubric selection (IELTS Task 1/2, TOEFL, custom)
+- **Session Persistence:**
+  - Persist mode selection across sessions
+  - Resume writing tutor sessions with context
+
+---
+
+# v0.2.0 - Writing Trainer Modes
+
+**Status:** In Planning
+
+**Features:**
+
+### SOTA Writing Trainer Modes:
+- [ ] **The "Refiner" (Diff View):** - User responds to a prompt → AI generates "Native Ideal" → TUI shows `git diff` style comparison (Red for errors, Green for improvements).
+- [ ] **Semantic Validator:** - AI validates answers based on *meaning*, not string matching (allows for synonyms/variations).
+- [ ] **Style Transfer:** - Drills focusing on register changes (Formal ↔ Casual).
+
+#### A. The "Reverse Translation" Loop (The Interpolator)
+
+Instead of asking the user to translate "Hello" -> "Hola", give them a target *context*.
+
+1. **AI:** Presents a sentence in the User's Native Language (e.g., "I'm not sure if I can make it to the meeting.").
+2. **User:** Attempts to write it in Target Language.
+3. **AI Analysis:** Does not look for an exact string match. It evaluates **Semantic Equivalence**.
+4. **Feedback:** If the meaning is close but the grammar is off, the AI highlights *only* the grammatical friction points.
+
+#### B. "The Refiner" (Git Diff Learning)
+
+This is the "Killer Feature" for a CLI tool.
+
+1. **Prompt:** "Write a complaint about cold coffee."
+2. **User Input:** "Coffee cold. I no like."
+3. **AI SOTA Response:** It generates the "Native Speaker Version" ("The coffee is cold and I'm not happy about it.") and displays a **colored character-level Diff** between the user's input and the ideal output.
+* *Why it works:* It's instant visual feedback on syntax and preposition usage.
+
+#### C. "Style Transfer" Drills
+
+1. **AI:** "Here is a formal sentence: 'I require assistance.' Rewrite this as if you are texting a close friend."
+2. **User:** "Help me."
+3. **AI:** Evaluates **Tone** and **Register**, not just grammar.
+
+---
+
+# v0.3.0 - Vocabulary Module
+
+**Status:** In Planning
+
+**Features:**
+
 ### Vocabulary Module
-- [x] Word library: Interactive TUI for CRUD operations
+- [ ] Word library: Interactive TUI for CRUD operations
   - `langtut vocab add <word>` - AI generates meaning/examples, user edits in modal
   - `langtut vocab` or `langtut vocab list` - Split-pane TUI (word list + details)
   - Keyboard shortcuts: `e` edit, `d` delete, `a` add, `/` search
 
 ---
-# v0.1.1 - ?
+
+# v0.4.0 - Reading Module
 
 **Status:** In Progress
 
 **Features:**
 
-### ?686
+### ?
 - [ ] Vocab guessing/typing: 
 	- **`review_workflow`**: user types meaning → AI reviews (hint if guess wrong, user can guess again or choose to give up) --> Add word to library
 	- [ ] Show word (collocation/PV, etc.) → `review_workflow`
@@ -112,7 +225,6 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 - [ ] Add words to library from content
 
 ---
-
 
 # v0.4 - Spaced Repetition & Grammar
 
@@ -297,27 +409,18 @@ Automatically loads rules from the `.cursor/rules/` directory. The `rules.mdc` f
 - Context-aware vocabulary suggestions
 - Learning streak challenges and competitions
 
+### IELTS Writing Module (The "Essay Compiler")
+- [ ] **Blueprint Mode:** Interactive form to outline Thesis and Body paragraphs before writing.
+- [ ] **Live Linter:** TUI overlay showing word count, sentence variety score, and cohesion markers in real-time.
+- [ ] **Lexical Upgrader:** Post-write analysis that identifies "weak" verbs/adjectives and suggests C1/C2 alternatives (e.g., "bad" -> "detrimental").
+- [ ] **Task 1 Data Generator:** AI generates a text-based description of a graph (e.g., "A bar chart showing..."), user must write the report.
+
 ---
 
 # Known Bugs
 
 > Track and fix these issues.
-
-| **Bug**                 | **Status** | **Resolution / Notes**                                                 |
-| ----------------------- | ---------- | ---------------------------------------------------------------------- |
-| **StreamChat Error**    | Fixed      | `api/gemini.go`: Ignore `iterator.Done` to prevent false errors.       |
-| **Map Address**         | Fixed      | `preset/preset.go`: Assign map value to temp var before addressing.    |
-| **#bug01: Enter Logic** | Fixed      | `add_model.go`: Enter saves immediately if input valid.                |
-| **#bug02: Tab Nav**     | Fixed      | `add_model.go`: Enabled Tab navigation between fields.                 |
-| **#bug03: Stale Modal** | Fixed      | `cli/vocab.go`: Force library reload per iteration for fresh state.    |
-| **#bug04: Feedback**    | Fixed      | `add_model.go`: Added "✓ Saved!" msg; triggers auto-close.             |
-| **#bug05: Width Panic** | Fixed      | `ui`: Guard `strings.Repeat` against negative; default width 80.       |
-| **#bug06: Edit Keys**   | Fixed      | `add_model.go`: Remapped Enter to **Edit**, `Ctrl+S` to **Save**.      |
-| **#bug07: Auto-close**  | Fixed      | `add_model.go`: `saveWord` returns `tea.Quit` to signal completion.    |
-| **#bug08: Duplication** | Fixed      | `add_model.go`: Cache original text/ID for safe delete/update.         |
-| **#bug09: List Help**   | Fixed      | `list_model.go`: Esc closes Help overlay before other handlers.        |
-| **#bug10: Index Panic** | Fixed      | `list_model.go`: Added bounds checks; handle empty lists (`idx = -1`). |
-| **#bug11: Add Help**    | Fixed      | `add_model.go`: Esc closes Help overlay before closing modal.          |
+@docs/BUGS.md
 
 ---
 > **Reminder**: Contents written in this file need to be condensed. Remove fluff, preserve meaning, maintain clarity for machine processing.
